@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Snake on ollama+GGUF</title>
 <style>
   body { font-family: system-ui, sans-serif; background: #1b1b1f; color: #e5e5e5;
          display: flex; flex-direction: column; align-items: center; padding: 24px; }
   h1 { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-  canvas { border: 1px solid #444; margin: 16px 0; image-rendering: pixelated; }
+  canvas { border: 1px solid #444; margin: 16px 0; image-rendering: pixelated;
+           max-width: min(92vw, 360px); height: auto; }
   #hud { display: flex; gap: 20px; font-size: 14px; flex-wrap: wrap; justify-content: center; }
   #log { font-family: monospace; font-size: 11px; color: #8a8a8a; max-width: 640px;
          word-break: break-all; margin-top: 16px; max-height: 120px; overflow-y: auto; }
@@ -21,10 +23,21 @@
   #info-panel.open { display: flex; }
   #info-card { background: #232327; border: 1px solid #555; border-radius: 10px;
                max-width: 560px; max-height: 80vh; overflow-y: auto; padding: 20px 24px;
-               font-size: 14px; line-height: 1.55; }
+               margin: 16px; font-size: 14px; line-height: 1.55; }
   #info-card h2 { font-size: 16px; margin-top: 0; }
   #info-card code { background: #1b1b1f; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
   #info-card p { margin: 10px 0; }
+  /* touch d-pad: works with mouse too, essential on mobile */
+  #dpad { display: grid; grid-template-columns: repeat(3, 64px);
+          grid-template-rows: repeat(2, 64px); gap: 8px; margin-top: 4px;
+          user-select: none; -webkit-user-select: none; }
+  #dpad button { margin: 0; font-size: 24px; border-radius: 10px;
+                 touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  #dpad button:active { background: #3d3d46; }
+  #dpad .up   { grid-column: 2; grid-row: 1; }
+  #dpad .left { grid-column: 1; grid-row: 2; }
+  #dpad .down { grid-column: 2; grid-row: 2; }
+  #dpad .right{ grid-column: 3; grid-row: 2; }
   #gh-link { position: fixed; top: 12px; right: 16px; display: flex; align-items: center;
              gap: 6px; color: #8a8a8a; text-decoration: none; font-size: 13px; }
   #gh-link:hover { color: #e5e5e5; }
@@ -43,9 +56,15 @@
   <span>turn: <b id="turn">0</b>/57</span>
   <span>score: <b id="score">0</b></span>
   <span>length: <b id="len">3</b></span>
-  <span id="status">press an arrow key to start</span>
+  <span id="status">press an arrow key or tap a button to start</span>
 </div>
 <canvas id="cv" width="360" height="360"></canvas>
+<div id="dpad">
+  <button class="up"    data-dir="U" aria-label="up">▲</button>
+  <button class="left"  data-dir="L" aria-label="left">◀</button>
+  <button class="down"  data-dir="D" aria-label="down">▼</button>
+  <button class="right" data-dir="R" aria-label="right">▶</button>
+</div>
 <button id="restart">restart</button>
 <div id="log"></div>
 
@@ -99,7 +118,7 @@ function reset() {
   document.getElementById("turn").textContent = 0;
   document.getElementById("score").textContent = 0;
   document.getElementById("len").textContent = 3;
-  setStatus("press an arrow key to start");
+  setStatus("press an arrow key or tap a button to start");
   draw();
 }
 
@@ -175,12 +194,20 @@ function draw() {
 // ---- input & loop --------------------------------------------------------------
 const KEY = { ArrowLeft: "L", ArrowRight: "R", ArrowUp: "U", ArrowDown: "D" };
 let started = false;
+function setDir(d) {
+  if (over) return;
+  dir = d;
+  document.getElementById("dir").textContent = dir;
+  if (!started) { started = true; setStatus("playing"); }
+}
 document.addEventListener("keydown", e => {
   if (!(e.key in KEY)) return;
   e.preventDefault();
-  dir = KEY[e.key];
-  document.getElementById("dir").textContent = dir;
-  if (!started) { started = true; setStatus("playing"); }
+  setDir(KEY[e.key]);
+});
+// d-pad: pointerdown (not click) for instant response on touch screens
+document.querySelectorAll("#dpad button").forEach(b => {
+  b.addEventListener("pointerdown", e => { e.preventDefault(); setDir(b.dataset.dir); });
 });
 setInterval(() => { if (started) tick(); }, TICK_MS);
 document.getElementById("restart").onclick = () => { started = false; reset(); };
