@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ggufun — hand-written GGUFs as state machines</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #1b1b1f; color: #e5e5e5;
+         display: flex; flex-direction: column; align-items: center; padding: 48px 24px; }
+  main { max-width: 640px; }
+  h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+  .sub { color: #8a8a8a; font-size: 15px; margin-bottom: 24px; }
+  p { font-size: 15px; line-height: 1.6; margin: 12px 0; }
+  code { background: #232327; padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  .games { display: flex; flex-direction: column; gap: 14px; margin: 28px 0; }
+  .game { display: block; background: #232327; border: 1px solid #444; border-radius: 10px;
+          padding: 16px 20px; text-decoration: none; color: #e5e5e5; transition: border-color .15s; }
+  .game:hover { border-color: #98c379; }
+  .game h2 { font-size: 17px; margin: 0 0 6px; color: #98c379; }
+  .game p { margin: 0; color: #b5b5b5; font-size: 14px; }
+  .game .meta { display: block; margin-top: 8px; color: #777; font-size: 12px; }
+  footer { color: #777; font-size: 13px; margin-top: 8px; }
+  footer a { color: #8a8a8a; }
+  #gh-link { position: fixed; top: 12px; right: 16px; display: flex; align-items: center;
+             gap: 6px; color: #8a8a8a; text-decoration: none; font-size: 13px; }
+  #gh-link:hover { color: #e5e5e5; }
+  #gh-link svg { width: 18px; height: 18px; fill: currentColor; }
+</style>
+</head>
+<body>
+<a id="gh-link" href="https://github.com/lucamattiazzi/ggufun" target="_blank" rel="noopener">
+  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+  GitHub
+</a>
+
+<main>
+  <h1>ggufun</h1>
+  <div class="sub">hand-written GGUFs as state machines</div>
+
+  <p>
+    These are games whose engine is a GGUF file, served by a standard
+    ollama server.
+    Those GGUFs have been hand crafted to be the backend of simple games,
+    with a deterministic output: the constraint was to build something
+    that can interact with the frontend only using the ollama runtime.
+    Attention heads read the current game state (ollama is stateless),
+    MLPs implement the rules, and the decoding/unembedder makes the whole
+    system deterministic.
+    It all started from a minuscule GGUF that always returned the same sentence,
+    the only possible future is, of course, Doom on ollama.
+  </p>
+
+  <p>
+    All the frontend does is send inputs and draw the game according to
+    what it receives from ollama. The game state itself is always computed from
+    the whole conversation.
+  </p>
+
+  <div class="games">
+    <a class="game" href="snake/index.html">
+      <h2>Snake: the classic game</h2>
+      <span class="meta">6×6 grid (GGUF 22MB)</span>
+    </a>
+    <a class="game" href="wolf/index.html">
+      <h2>Wolf: a first person raycaster</h2>
+      <span class="meta">16×16 maze (GGUF 191MB)</span>
+    </a>
+  </div>
+
+  <footer>
+    See the code
+    <a href="https://github.com/lucamattiazzi/ggufun" target="_blank" rel="noopener">HERE</a>
+  </footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,30 @@
+networks:
+  web:
+    external: false
+
+services:
+  ollama:
+    build:
+      context: ..
+      dockerfile: deploy/ollama.Dockerfile
+    restart: unless-stopped
+    environment:
+      - OLLAMA_KEEP_ALIVE=-1
+      - OLLAMA_ORIGINS=*
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  snake:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      default: {}
+      web: {}
