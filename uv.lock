@@ -97,7 +97,7 @@ wheels = [
 ]
 
 [[package]]
-name = "ggufun"
+name = "after the bubble"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

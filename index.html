@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ggufun: hand-written GGUFs as state machines</title>
+<title>after the bubble: hand written GGUF for fun</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
@@ -16,9 +16,10 @@
          font-family: sarabun, system-ui, sans-serif; background: var(--bg); }
   body { color: var(--fg); }
   a { color: var(--link); text-decoration: none; }
-  header { border-bottom: 1px solid var(--fg); display: flex;
-           justify-content: space-between; align-items: flex-end; }
+  header { border-bottom: 1px solid var(--fg); display: flex; flex-wrap: wrap;
+           justify-content: space-between; align-items: flex-end; gap: .5em; }
   header h1 { margin: 0 0 .2em; }
+  header .brand { display: flex; align-items: baseline; gap: .8em; }
   header nav { font-size: .85em; margin-bottom: .6em; }
   header nav a { color: var(--fg); }
   ul.machines { list-style: none; padding: 0; }
@@ -46,11 +47,15 @@
     document.documentElement.className = localStorage.theme;
   }
 </script>
-<script defer data-domain="ggufun.grokked.it" src="https://check.grokked.it/js/script.js"></script>
+<script defer data-domain="afterthebubble.grokked.it" src="https://check.grokked.it/js/script.js"></script>
 </head>
 <body>
 <header>
-  <h1>ggufun</h1>
+  <div class="brand">
+    <h1>After the bubble</h1>
+    <img src="/badge-notraining.svg" width="88" height="31"
+         alt="no training - zero epochs">
+  </div>
   <nav>
     <a href="https://github.com/lucamattiazzi/ggufun" target="_blank" rel="noopener">GitHub</a> ·
     <button onclick="flipTheme()" title="light/dark" aria-label="toggle dark mode">&#9681;</button>
@@ -68,8 +73,8 @@
       <span>191 MB</span></li>
   <li><a href="life/">Life — Conway's game of life on a 12×12 torus</a>
       <span>64 MB</span></li>
-  <li><a href="doom/">Doom — maze, monster, hitscan and hit points</a>
-      <span>294 MB</span></li>
+  <!-- <li><a href="doom/">Doom — maze, monster, hitscan and hit points</a>
+      <span>294 MB</span></li> -->
   <li><a href="kv/">kv — a key-value store whose database is the context</a>
       <span>321 MB</span></li>
   <li><a href="base64/">base64 — text in, base64 out, encoded by the weights</a>

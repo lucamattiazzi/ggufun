@@ -11,8 +11,11 @@ COPY wolf/Modelfile /build/wolf.Modelfile
 COPY life/life.gguf /build/
 COPY life/Modelfile /build/life.Modelfile
 
-COPY doom/doom.gguf /build/
-COPY doom/Modelfile /build/doom.Modelfile
+COPY base64/base64.gguf /build/
+COPY base64/Modelfile /build/base64.Modelfile
+
+# COPY doom/doom.gguf /build/
+# COPY doom/Modelfile /build/doom.Modelfile
 
 COPY kv/kv.gguf /build/
 COPY kv/Modelfile /build/kv.Modelfile
@@ -31,5 +34,6 @@ RUN ollama serve & \
     ollama create life -f life.Modelfile && \
     ollama create doom -f doom.Modelfile && \
     ollama create kv -f kv.Modelfile && \
+    ollama create base64 -f base64.Modelfile && \
     ollama create afterthebubble -f afterthebubble.Modelfile && \
     cd / && rm -rf /build
