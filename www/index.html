@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>static site hosting on ollama+GGUF</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<style>
+  /* 1996: browser defaults do the styling; CSS only where HTML cannot go */
+  body { font-family: "Times New Roman", Times, serif; background: #c0c0c0; text-align: center; }
+  h1 { font-size: 20px; }
+  #bar { margin: 12px auto; }
+  #path { font: 13px "Courier New", Courier, monospace; width: 22em; }
+  iframe { width: 96vw; max-width: 900px; height: 620px; background: #fff;
+           border: 2px inset #808080; }
+  #log { font: 11px/1.4 "Courier New", Courier, monospace; text-align: left; white-space: pre-wrap;
+         word-break: break-all; max-width: 900px; max-height: 90px; overflow-y: auto;
+         margin: 12px auto; background: #ffffff; border: 1px inset #808080; padding: 4px 6px; }
+  samp { background: #ffffcc; }
+</style>
+</head>
+<body>
+<h1>static site hosting</h1>
+<p>the catalog below is not on a disk: it is being decoded, page by page<br>
+   <output id="status">registering the server&hellip;</output></p>
+
+<form id="bar">
+  <label>http://neural.host<input id="path" value="/index.html" size="24"></label>
+  <button type="submit">GET</button>
+</form>
+<p><small>try
+  <a href="#" data-go="/index.html">/index.html</a> &middot;
+  <a href="#" data-go="/about.html">/about.html</a> &middot;
+  <a href="#" data-go="/site/style.css">/site/style.css</a> &middot;
+  <a href="#" data-go="/machines.json">/machines.json</a> &middot;
+  <a href="#" data-go="/nope.html">/nope.html</a> &middot;
+  <a href="#" data-go="/../etc/passwd">/../etc/passwd</a>
+</small></p>
+
+<iframe id="page" title="the catalog, as ollama returns it"></iframe>
+<pre id="log"></pre>
+
+<hr>
+<footer>
+  <p><small>why? because</small></p>
+  <p><small><em>afterthebubble.ai was more than 100&euro;/year, I'm ok wasting my time,
+  a little bit less so with my money.</em></small></p>
+  <p><small><a href="https://github.com/lucamattiazzi/ggufun" target="_blank" rel="noopener">blueprints (github)</a></small></p>
+</footer>
+
+<script>
+// The frame below is a real browsing context, served by sw.js out of the
+// weights: the frameset loads site/banner.html, which loads style.css, which
+// fetches machines.json — every one of them a separate GET, and every GET two
+// tokens of ollama. This page only registers the worker and drives the address
+// bar: it holds no list of pages, and never learns one.
+const $ = (id) => document.getElementById(id);
+const setStatus = (t) => { $("status").textContent = t; };
+const log = (t) => { $("log").textContent = t + "\n" + $("log").textContent; };
+
+async function boot() {
+  if (!navigator.serviceWorker) {
+    setStatus("no service worker here: the catalog cannot be served from the weights");
+    return;
+  }
+  let reg;
+  try {
+    reg = await navigator.serviceWorker.register("sw.js", { scope: "./neural/" });
+  } catch (e) {
+    // service workers need a secure context: https, or localhost
+    setStatus(`could not register the server: ${e.message} (https or localhost?)`);
+    return;
+  }
+  // navigator.serviceWorker.ready is no use here: THIS page sits outside the
+  // worker's scope (./neural/), so nothing will ever control it and the promise
+  // would hang. Wait for the worker itself to activate, or the iframe's first
+  // GET races the install and hits nginx — a 404 for a page nginx never had.
+  if (!reg.active) {
+    const w = reg.installing || reg.waiting;
+    await new Promise((res) => w.addEventListener("statechange", () => {
+      if (w.state === "activated") res();
+    }));
+  }
+  go("/index.html");
+}
+
+function go(path) {
+  setStatus(`asking ollama for ${path}…`);
+  const t0 = performance.now();
+  const f = $("page");
+  f.onload = () => {
+    setStatus(`${path} — served from the weights in ${Math.round(performance.now() - t0)} ms`);
+    log(`> GET ${path};`);
+  };
+  // a real URL, not srcdoc: a <frameset> resolves its frames against the
+  // document's base url, and srcdoc has none — there would be nothing to load
+  f.src = "neural" + path;
+}
+
+$("bar").addEventListener("submit", (e) => {
+  e.preventDefault();
+  go($("path").value || "/index.html");
+});
+for (const a of document.querySelectorAll("[data-go]")) {
+  a.addEventListener("click", (e) => {
+    e.preventDefault();
+    $("path").value = a.dataset.go;
+    go(a.dataset.go);
+  });
+}
+boot();
+</script>
+</body>
+</html>

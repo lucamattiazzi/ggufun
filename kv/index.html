@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kv-store on ollama+GGUF</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<style>
+  body { font-family: "Times New Roman", Times, serif; background: #c0c0c0; text-align: center; }
+  h1 { font-size: 20px; }
+  #term { font: 13px/1.45 "Courier New", Courier, monospace; text-align: left;
+          white-space: pre-wrap; word-break: break-all;
+          max-width: 640px; height: 320px; overflow-y: auto; margin: 12px auto 0;
+          background: #101408; color: #8aff6a; border: 2px inset #808080; padding: 8px 10px; }
+  #term .op  { color: #d7ffd0; }
+  #term .err { color: #ffb36a; }
+  #line { display: flex; max-width: 640px; margin: 0 auto 8px; }
+  #line label { font: 13px/1.9 "Courier New", Courier, monospace; background: #101408;
+                color: #8aff6a; border: 2px inset #808080; border-top: 0; border-right: 0;
+                padding: 0 0 2px 10px; }
+  #cmd { flex: 1; font: 13px/1.9 "Courier New", Courier, monospace; background: #101408;
+         color: #d7ffd0; border: 2px inset #808080; border-top: 0; border-left: 0;
+         outline: none; padding: 0 10px 2px 4px; }
+  p.gauge { margin: 6px 0; }
+</style>
+</head>
+<body>
+<h1>kv-store</h1>
+<p class="gauge">tape: <b id="used">0</b>/<b id="cap">53</b> commands &middot;
+   <output id="status">connecting the operator's console&hellip;</output></p>
+<div id="term" aria-live="polite"></div>
+<form id="line"><label for="cmd">kv&gt;&nbsp;</label><input id="cmd" autocomplete="off"
+  spellcheck="false" autofocus></form>
+
+<script>
+// ---- configuration ------------------------------------------------------------
+const OLLAMA = "";                 // ollama server ("" = same origin)
+const MODEL  = "kv";               // name given with `ollama create`
+const KEY_LEN = 4, VAL_LEN = 8, MAX_CMDS = 53;
+
+// ---- the database IS the tape: the client keeps ONLY the command log ----------
+// (replies are pure functions of the log and are not sent back)
+const PREFIX = "<NOOP>".repeat(13);
+let tape = [];                     // one 13-token frame per command
+let waiting = false;
+
+// the wire alphabet: printable ASCII, no space, no '<' (a byte >= 0x80 would
+// become two UTF-8 bytes on the wire; '<' could open a control token)
+const BYTE_OK = (s) => /^[\x21-\x3b\x3d-\x7e]*$/.test(s);
+
+const frame = {
+  S: (k, v) => `<S>${k}${v}`,
+  G: (k) => `<G>${k}` + "<PAD>".repeat(VAL_LEN),
+  D: (k) => `<D>${k}` + "<TS>".repeat(VAL_LEN),
+};
+
+// ---- terminal ------------------------------------------------------------------
+const term = document.getElementById("term");
+function put(s, cls) {
+  const el = document.createElement("span");
+  el.textContent = s + "\n";
+  if (cls) el.className = cls;
+  term.appendChild(el);
+  term.scrollTop = term.scrollHeight;
+}
+function gauge() {
+  document.getElementById("used").textContent = tape.length;
+  document.getElementById("status").textContent =
+    tape.length >= MAX_CMDS ? "TAPE FULL" : "ready";
+}
+
+const MOTD = [
+  "AFTER-THE-BUBBLE SALVAGE ......... UNIT: kv-store",
+  "one transformer, three blocks, zero training.",
+  "the ledger IS the tape: capacity one context window",
+  "(53 commands), durability none.",
+  "",
+  "NOTICE FROM THE FLOOR: this unit is slated to back the",
+  "site guestbook and the visitor counter (both currently",
+  "hand-cranked). do not unplug.",
+  "",
+  "type HELP for the operator's card.",
+];
+const HELP = [
+  "S <key> <value>   store  (key: 4 bytes, value: 8 bytes) -> OK",
+  "G <key>           fetch                    -> V <value> | NF",
+  "D <key>           delete (writes a tombstone)           -> OK",
+  "CLEAR             wipe the tape (our only durability policy)",
+  "bytes: printable ASCII, no spaces, no '<'.",
+];
+
+// ---- command parsing -------------------------------------------------------------
+function fail(msg) { put("?" + msg, "err"); }
+
+async function exec(lineText) {
+  const parts = lineText.trim().split(/\s+/);
+  if (!parts[0]) return;
+  const op = parts[0].toUpperCase();
+  put("kv> " + lineText, "op");
+  if (op === "HELP") { HELP.forEach((l) => put(l)); return; }
+  if (op === "CLEAR") { tape = []; term.textContent = ""; put("tape wiped. the past is negotiable."); gauge(); return; }
+  const alias = { S: "S", SET: "S", G: "G", GET: "G", D: "D", DEL: "D" }[op];
+  if (!alias) { fail(`unknown command: ${op} (HELP?)`); return; }
+  if (tape.length >= MAX_CMDS) {
+    fail(`TAPE FULL (${MAX_CMDS}/${MAX_CMDS}) — one context window is all we have. CLEAR to wipe.`);
+    return;
+  }
+  const key = parts[1] || "";
+  if (key.length !== KEY_LEN || !BYTE_OK(key)) { fail(`key must be exactly ${KEY_LEN} bytes (ASCII, no '<')`); return; }
+  let f;
+  if (alias === "S") {
+    const val = parts[2] || "";
+    if (val.length !== VAL_LEN || !BYTE_OK(val)) { fail(`value must be exactly ${VAL_LEN} bytes (ASCII, no '<')`); return; }
+    f = frame.S(key, val);
+  } else {
+    if (parts.length > 2) { fail(`${alias} takes only a key`); return; }
+    f = frame[alias](key);
+  }
+  await ask(f);
+}
+
+// ---- model call: the reply is generated, read, and NOT appended -------------------
+async function ask(f) {
+  if (waiting) return;
+  waiting = true;
+  document.getElementById("status").textContent = "spinning…";
+  const prompt = PREFIX + tape.join("") + f;
+  let text;
+  try {
+    const r = await fetch(`${OLLAMA}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: MODEL, prompt, raw: true, stream: false,
+        options: { temperature: 0, num_predict: VAL_LEN + 2, repeat_penalty: 1.0 }
+      })
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    text = (await r.json()).response;
+  } catch (e) {
+    fail(`ollama error: ${e.message} (OLLAMA_ORIGINS? model created?)`);
+    waiting = false; gauge(); return;
+  }
+  let m;
+  if (text.startsWith("<OK>")) put("OK");
+  else if (text.startsWith("<NF>")) put("NF");
+  else if ((m = text.match(/^<V>(.{8})/s))) put("V " + m[1]);
+  else { fail(`unexpected output: ${JSON.stringify(text)}`); waiting = false; return; }
+  tape.push(f);                    // the command enters the ledger; the reply does not
+  waiting = false;
+  gauge();
+}
+
+// ---- input ------------------------------------------------------------------------
+const input = document.getElementById("cmd");
+document.getElementById("line").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const v = input.value;
+  input.value = "";
+  await exec(v);
+});
+MOTD.forEach((l) => put(l));
+gauge();
+</script>
+</body>
+</html>

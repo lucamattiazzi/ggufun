@@ -1,0 +1,148 @@
+{
+  "machines": [
+    {
+      "name": "snake",
+      "type": "recreational",
+      "gguf_size": "22 MB",
+      "clock": "700 ms tick, frontend-paced",
+      "status": "operational",
+      "blurb": "The classic game. The operator supplies directions; food, growth, collisions and death are computed in the weights. Runs unattended for 57 turns per shift (context limit).",
+      "explanation": [
+        "<p>This is a snake game, running on an ollama server that serves a custom .gguf file. This .gguf file is not a model, it has not been built via training, it has been hand crafted to be able to receive inputs from the user (as tokens), and answers with the new position of the snake head and the current state.</p>",
+        "<p>Every 700ms the frontend sends the server its input, as always with the whole game history: the server has no state, and no idea of where the snake is. It will compute it using all of the inputs it receive, not using some stochastic learned method, but with good old deterministic computations.</p>",
+        "<p>Attention heads read the input at fixed offsets, so that they extract the latest move, the food position. The MLP compute the transition cell + move = new cell, and check for food and collisions.</p>"
+      ],
+      "links": {
+        "demo": "snake/index.html",
+        "gguf_download": "https://TODO-S3-BUCKET/snake.gguf",
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/snake/build_gguf.py"
+      }
+    },
+    {
+      "name": "wolf",
+      "type": "recreational",
+      "gguf_size": "191 MB",
+      "clock": "on operator input",
+      "status": "operational",
+      "blurb": "A first-person raycaster. Movement, collisions and the rendered frame all come out of a 35,584-neuron transition ROM. State is re-serialized every tick: unlimited play on a 40-token tape.",
+      "explanation": [
+        "<p>This is a basic first person raycaster game whose engine is completely built in a GGUF file run by a standard ollama server. The GGUF was not obtained by training, but hand crafted (I mean, figuratively) to handle the game.</p>",
+        "<p>Every keypress the frontend sends a command to the server, and it gets as response 35 tokens: the new game state, and 32 columns that tell it what to render and where. The context has no history, the current state keeps getting computed from the whole \"conversation\".</p>"
+      ],
+      "links": {
+        "demo": "wolf/index.html",
+        "gguf_download": "https://TODO-S3-BUCKET/wolf.gguf",
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/wolf/build_gguf.py"
+      }
+    },
+    {
+      "name": "doom",
+      "type": "recreational",
+      "gguf_size": "294 MB",
+      "clock": "on operator input",
+      "status": "operational",
+      "blurb": "A first-person maze with a monster that chases you (real pathfinding), hitscan shooting and hit points. The transformer uses its own generated tokens as registers: one tick is a pipeline of small tables.",
+      "explanation": [
+        "<p>A first-person maze with a monster that chases you (real BFS pathfinding), hitscan shooting and hit points &mdash; and the entire game, <b>rendering included</b>, is a neural network whose weights were <b>written by hand</b> (no training), executed by ollama/llama.cpp. This page only sends the keys.</p>",
+        "<p>On every key press the page sends the serialized state plus the input and asks for 49 tokens: the model computes your movement, whether your shot connected (crosshair + line of sight), the monster's chase step (or its respawn, drawn from a hash table wired into the weights), the bite damage, and renders 32 wall columns plus the monster sprite. The intermediate results travel as generated tokens that later rows of the same tick read back: the transformer uses its own output as registers.</p>",
+        "<p>The full explanation is in this machine's <code>README.md</code>.</p>"
+      ],
+      "links": {
+        "demo": "doom/index.html",
+        "gguf_download": "https://TODO-S3-BUCKET/doom.gguf",
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/doom/build_gguf.py"
+      }
+    },
+    {
+      "name": "life",
+      "type": "recreational",
+      "gguf_size": "64 MB",
+      "clock": "~8 generations/s",
+      "status": "operational",
+      "blurb": "Conway's Game of Life on a 12×12 torus. Nine attention heads fetch each cell's neighbourhood, one neuron per possible 3×3 pattern applies the rules. 144 cells in, 144 cells out.",
+      "explanation": [
+        "<p>This is a Conway's Game of Life implementation whose rules live completely in a GGUF file run by a standard ollama server. The GGUF was hand crafted to compute Life, without any training.</p>",
+        "<p>Every tick the frontend sends the 144 cells of the grid and gets back 145 tokens: the next generation, cell by cell, plus an end-of-turn token. Nine attention heads fetch each cell's 3&times;3 neighbourhood (the torus wrap is wired into the attention queries) and a 512-neuron MLP, one neuron per possible neighbourhood, applies Conway's rules. The frontend does nothing but draw what ollama returns.</p>"
+      ],
+      "links": {
+        "demo": "life/index.html",
+        "gguf_download": "https://TODO-S3-BUCKET/life.gguf",
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/life/build_gguf.py"
+      }
+    },
+    {
+      "name": "base64",
+      "type": "utility",
+      "gguf_size": "19 MB",
+      "clock": "~400 tokens/s, on operator input",
+      "status": "operational",
+      "blurb": "Text goes in, base64 comes out. The machine does not judge. A curiosity before the crash; honest work after. It reads the input length off the position of the end marker, and 48 bytes a call is all it will take.",
+      "explanation": [
+        "<p>This is a base64 encoder whose logic lives completely in a GGUF file run by a standard ollama server. The GGUF was hand crafted, without any training: no model was ever taught what base64 is.</p>",
+        "<p>The prompt is a marker <code>E</code>, one token per input byte, and a <code>;</code> that closes the input. The completion is the base64, one token per character, then an end-of-turn token. Nothing else is sent: the machine works out how long the input was from <em>where</em> the <code>;</code> sits, and that alone tells it which bytes each output character needs, how many <code>=</code> to add and when to stop.</p>",
+        "<p>Inside, one attention head reads the position of the <code>;</code>, a 1681-neuron table turns \"output character number k of an input of length L\" into the addresses of the one or two bytes that character is made of, two more heads go and fetch them, and a 1024-neuron ROM &mdash; one neuron per pair of nibbles per phase &mdash; applies the base64 formula.</p>",
+        "<p>The machine encodes up to 48 bytes per call. This page sends 21 bytes at a time and joins the answers, which is exact because 21 is a multiple of 3 (base64 groups bytes in threes, so only the last block is padded) and because it keeps ollama's repeat guard from cutting long runs of identical characters &mdash; try the <em>24 zero bytes</em> button to see what that guard does when a single call hits it.</p>"
+      ],
+      "links": {
+        "demo": "base64/index.html",
+        "gguf_download": "https://TODO-S3-BUCKET/base64.gguf",
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/base64/build_gguf.py"
+      }
+    },
+    {
+      "name": "kv-store",
+      "type": "infrastructure",
+      "gguf_size": "321 MB",
+      "clock": "on operator input",
+      "status": "operational",
+      "blurb": "A key-value store where the database IS the context: the client appends S/G/D commands, attention finds the most recent write (a recency ramp breaks ties), deletes are tombstones. Capacity: one context window, 53 commands. Durability: none. Slated to power this site's guestbook and visitor counter, both currently hand-cranked.",
+      "links": {
+        "demo": "kv/index.html",
+        "gguf_download": "https://TODO-S3-BUCKET/kv.gguf",
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/kv/build_gguf.py"
+      }
+    },
+    {
+      "name": "python-vm",
+      "type": "infrastructure",
+      "gguf_size": "TBD",
+      "clock": "TBD",
+      "status": "under_construction",
+      "blurb": "A small Python virtual machine. Every generated token is one machine cycle: the scratchpad is the RAM, the unembedder is the instruction decoder.",
+      "links": {}
+    },
+    {
+      "name": "fizzbuzz",
+      "type": "utility",
+      "gguf_size": "TBD",
+      "clock": "TBD",
+      "status": "under_construction",
+      "blurb": "Prints fizzbuzz to arbitrary N. NOTE FROM THE FLOOR: this workload runs on the python-vm machine — same GGUF, different Modelfile. The factory retools; the furnace stays lit.",
+      "links": {}
+    },
+    {
+      "name": "static-site-hosting",
+      "type": "infrastructure",
+      "gguf_size": "213 KB, holding this entire catalog (you compile your own)",
+      "clock": "2 tokens per page: the body, then EOS",
+      "status": "operational",
+      "blurb": "A web server with no files and no disk. GET as prompt, the page as completion — and the whole page is ONE token: the model does not compose HTML, it names it. Unknown paths crumble into byte tokens and every byte votes for the 404, so there is no lookup to fail and no filesystem to traverse. Ships as a compiler, not as a download: compile_site.py welds your folder into the weights. This very catalog is inside one — frameset, plates, ledger and all. Compression: 1:5.9, in the wrong direction — it never goes below 1:1, because it does not compress, it transcribes.",
+      "explanation": [
+        "<p>This is a static web site compiled into a GGUF file, running on a stock ollama server. The page in the frame above was not fetched from a disk: it was <em>generated</em>. Nothing on this floor stores it.</p>",
+        "<p>The protocol is the whole design. The prompt is <samp>GET /about.html;</samp> and the completion is the file's bytes, then end-of-sequence. Both halves are single tokens: the request is one entry in the vocabulary, and so is the entire page &mdash; doctype, markup, closing tag and all. The model does not compose HTML byte by byte, it <em>names</em> it. One page costs two decoding steps.</p>",
+        "<p>So there is no circuit. The other machines in this catalog compute something &mdash; snake moves, Life generations, raycast columns. Here the answer is a constant per path, so attention and the MLP are wired to zero and do nothing at all: the residual at the last position simply <em>is</em> the embedding of the last token. <code>token_embd</code> maps token&nbsp;&rarr;&nbsp;state, <code>output</code> maps state&nbsp;&rarr;&nbsp;next token, and there are only three transitions: a known path names its page, a page names the end-of-sequence, and everything else names the 404.</p>",
+        "<p>That last one is why unknown paths work without a single comparison. Ask for <samp>/wp-admin</samp> and no vocabulary entry matches, so the request crumbles into individual byte tokens &mdash; and every byte token votes for the 404. It is not a fallback branch, it is the default winner. The same goes for <samp>/../etc/passwd</samp>: there is no path traversal to defend against when there is no filesystem to traverse.</p>",
+        "<p><strong>This machine ships as a script, not as a download.</strong> There is no one GGUF to grab, because the GGUF <em>is</em> your site: <code>compile_site.py&nbsp;&lt;folder&gt;</code> takes a directory of text files (and a <code>404.html</code>) and welds it into a model. The blueprints link below is the compiler.</p>",
+        "<p><strong>The honest part.</strong> The vocabulary holds your site verbatim, plus ballast the format demands, so the model is always bigger than what it serves &mdash; the compiler measures the exact ratio and prints <samp>compression: 1:N, in the wrong direction</samp> every time it runs. It never goes below 1:1. This machine does not compress. It transcribes, and then pays to carry what it transcribed.</p>",
+        "<h2>COMPILE YOUR OWN</h2>",
+        "<pre>$ ls mysite/\nabout.html   404.html   index.html   style.css\n\n$ python compile_site.py mysite\nverifica (forward fedele vs filesystem): 10/10 (100.0%)\nscritto mysite.gguf\n  compression: 1:9.4, in the wrong direction\n\n$ ollama create mysite -f mysite.Modelfile\n$ python serve.py --model mysite        # http://localhost:8080/</pre>",
+        "<p><code>serve.py</code> is the shim: about fifty lines of standard library, zero dependencies. It turns a GET into the prompt, streams the tokens back, and guesses a content-type from the extension. It never learns which pages exist &mdash; if the path is unknown, the model says 404 by itself.</p>",
+        "<p>Rules: text files only (a token is a UTF-8 string, so no images), a <code>404.html</code> is required, 256&nbsp;KiB per file, and GET only. No query strings &mdash; <samp>/x.html?a=1</samp> is simply a path that was never compiled in, so it is a 404, honestly.</p>"
+      ],
+      "links": {
+        "demo": "www/index.html",
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/www/compile_site.py"
+      }
+    }
+  ]
+}

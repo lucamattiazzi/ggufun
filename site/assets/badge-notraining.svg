@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="88" height="31" viewBox="0 0 88 31">
+  <rect width="88" height="31" fill="#c0c0c0"/>
+  <rect x="0.5" y="0.5" width="87" height="30" fill="none" stroke="#ffffff"/>
+  <rect x="1.5" y="1.5" width="86" height="29" fill="none" stroke="#404040"/>
+  <circle cx="16" cy="15.5" r="10" fill="#ffffff" stroke="#cc0000" stroke-width="2.5"/>
+  <text x="16" y="19" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#000000">GD</text>
+  <line x1="9" y1="22.5" x2="23" y2="8.5" stroke="#cc0000" stroke-width="2.5"/>
+  <text x="55" y="13" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#000000">NO TRAINING</text>
+  <text x="55" y="24" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" fill="#404040">zero epochs</text>
+</svg>

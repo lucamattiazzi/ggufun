@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Doom-like on ollama+GGUF</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<style>
+  /* 1996: browser defaults do the styling; CSS only where HTML cannot go */
+  body { font-family: "Times New Roman", Times, serif; background: #c0c0c0; text-align: center; }
+  h1 { font-size: 20px; }
+  canvas { image-rendering: pixelated; max-width: 92vw; background: #26262e; }
+  #hp { color: #cc0000; letter-spacing: 2px; }
+  #log { font: 11px/1.4 "Courier New", Courier, monospace; text-align: left; white-space: pre-wrap;
+         word-break: break-all; max-width: 640px; max-height: 100px; overflow-y: auto;
+         margin: 12px auto; background: #ffffff; border: 1px inset #808080; padding: 4px 6px; }
+</style>
+</head>
+<body>
+<h1>Doom-like &mdash; the whole game is a GGUF on ollama</h1>
+<p><b id="hp">&hearts;&hearts;&hearts;&hearts;&hearts;</b> &middot;
+   kills: <b id="kills">0</b> &middot; facing: <b id="ang">E</b><br>
+   <output id="status">loading initial view&hellip;</output></p>
+<canvas id="cv" width="640" height="400"></canvas>
+<p>arrows: &larr; &rarr; turn, &uarr; &darr; move &mdash; space: fire. The enemy only moves when you do.</p>
+<p><button id="restart" style="display:none">restart</button></p>
+<pre id="log"></pre>
+
+
+
+<script>
+// ---- configuration -----------------------------------------------------------
+const OLLAMA = "";
+const MODEL  = "doom";
+const NCOLS = 32, NHLEV = 14, NSIZE = 6, HP0 = 5;
+const SPAWN = { x: 3, y: 3, a: 0, ex: 10, ey: 10, hp: 5, t: 0 }; // matches build_gguf.py
+const DIRS = ["E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW","N","NNE","NE","ENE"];
+
+let state = { ...SPAWN };
+let kills = 0, over = false, waiting = false;
+
+// ---- one tick: state+input -> everything else ----------------------------------
+async function tick(input) {
+  if (waiting || over) return;
+  waiting = true;
+  const prompt = `<NOOP><X:${state.x}><Y:${state.y}><A:${state.a}>` +
+                 `<EX:${state.ex}><EY:${state.ey}><HP:${state.hp}><T:${state.t}><I:${input}>`;
+  let text;
+  try {
+    const r = await fetch(`${OLLAMA}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: MODEL, prompt, raw: true, stream: false,
+        options: { temperature: 0, num_predict: 49, repeat_penalty: 1.0 }
+      })
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    text = (await r.json()).response;
+  } catch (e) {
+    setStatus(`ollama error: ${e.message} (OLLAMA_ORIGINS? model created?)`);
+    waiting = false; return;
+  }
+  const m = (re) => { const x = text.match(re); return x ? x : null; };
+  const mX = m(/<X:(\d+)>/), mY = m(/<Y:(\d+)>/), mA = m(/<A:(\d+)>/);
+  const mEX = m(/<EX:(\d+)>/), mEY = m(/<EY:(\d+)>/);
+  const mHP = m(/<HP:(\d+)>/), mT = m(/<T:(\d+)>/);
+  const mHIT = m(/<HIT:(\d)>/), mSPR = m(/<SPR:(none|\d+,\d+)>/);
+  const mST = m(/<(OK|DEAD|KILL)>/);
+  const cols = [...text.matchAll(/<C(\d+):(\d+),(\d+)>/g)];
+  if (!mX || !mY || !mA || !mEX || !mEY || !mHP || !mT || !mST || cols.length !== NCOLS) {
+    setStatus(`unexpected output: ${text.slice(0, 90)}`); waiting = false; return;
+  }
+  state = { x: +mX[1], y: +mY[1], a: +mA[1], ex: +mEX[1], ey: +mEY[1],
+            hp: +mHP[1], t: +mT[1] };
+  log(`> <I:${input}>  < HP:${state.hp} ${mST[1]}${mHIT && mHIT[1] === "1" ? " HIT!" : ""}`);
+  document.getElementById("hp").textContent = "♥".repeat(state.hp) + "♡".repeat(HP0 - state.hp);
+  document.getElementById("ang").textContent = DIRS[state.a];
+  if (mST[1] === "KILL") {
+    kills++; document.getElementById("kills").textContent = kills;
+    flash("KILL!");
+  }
+  draw(cols, mSPR ? mSPR[1] : "none", input === "S");
+  if (mST[1] === "DEAD") {
+    over = true;
+    setStatus("YOU DIED");
+    document.getElementById("restart").style.display = "";
+    cx.fillStyle = "rgba(120,0,0,.45)"; cx.fillRect(0, 0, cv.width, cv.height);
+  }
+  waiting = false;
+}
+
+// ---- rendering ------------------------------------------------------------------
+const cv = document.getElementById("cv"), cx = cv.getContext("2d");
+const CW = cv.width / NCOLS;
+function draw(cols, spr, fired) {
+  cx.fillStyle = "#26262e"; cx.fillRect(0, 0, cv.width, cv.height / 2);
+  cx.fillStyle = "#3f3630"; cx.fillRect(0, cv.height / 2, cv.width, cv.height / 2);
+  for (const m of cols) {
+    const i = +m[1], h = +m[2], side = +m[3];
+    const wh = (h / NHLEV) * cv.height;
+    const l = 25 + 55 * (h / NHLEV);
+    cx.fillStyle = side === 0 ? `rgb(${l * 1.9},${l * 1.0},${l * 0.6})`
+                              : `rgb(${l * 1.4},${l * 0.75},${l * 0.45})`;
+    cx.fillRect(i * CW, (cv.height - wh) / 2, CW + 0.5, wh);
+  }
+  if (spr !== "none") {
+    const [c, z] = spr.split(",").map(Number);
+    const hgt = (z / NSIZE) * cv.height * 0.9, wid = hgt * 0.7;
+    const x0 = (c + 0.5) * CW - wid / 2, y0 = (cv.height - hgt) / 2 + hgt * 0.05;
+    cx.fillStyle = "#8f2b2b";                       // body
+    cx.fillRect(x0, y0, wid, hgt);
+    cx.fillStyle = "#5e1c1c";                       // head band
+    cx.fillRect(x0, y0, wid, hgt * 0.28);
+    cx.fillStyle = "#ffd34d";                       // eyes
+    const ew = Math.max(2, wid * 0.14);
+    cx.fillRect(x0 + wid * 0.2, y0 + hgt * 0.1, ew, ew);
+    cx.fillRect(x0 + wid * 0.66, y0 + hgt * 0.1, ew, ew);
+  }
+  // crosshair (+ muzzle flash on fire)
+  cx.strokeStyle = fired ? "#ffd34d" : "#e5e5e5";
+  cx.lineWidth = fired ? 3 : 1.5;
+  cx.beginPath();
+  cx.moveTo(cv.width / 2 - 10, cv.height / 2); cx.lineTo(cv.width / 2 + 10, cv.height / 2);
+  cx.moveTo(cv.width / 2, cv.height / 2 - 10); cx.lineTo(cv.width / 2, cv.height / 2 + 10);
+  cx.stroke();
+}
+
+// ---- input --------------------------------------------------------------------
+const KEY = { ArrowLeft: "L", ArrowRight: "R", ArrowUp: "F", ArrowDown: "B", " ": "S" };
+document.addEventListener("keydown", e => {
+  if (!(e.key in KEY)) return;
+  e.preventDefault();
+  tick(KEY[e.key]);
+});
+document.getElementById("restart").onclick = () => {
+  state = { ...SPAWN }; kills = 0; over = false;
+  document.getElementById("kills").textContent = 0;
+  document.getElementById("hp").textContent = "♥".repeat(HP0);
+  document.getElementById("restart").style.display = "none";
+  (async () => { await tick("L"); await tick("R"); })();
+};
+
+// ---- utils ----------------------------------------------------------------------
+function setStatus(s) { document.getElementById("status").textContent = s; }
+function flash(s) { setStatus(s); setTimeout(() => { if (!over) setStatus(""); }, 800); }
+function log(s) {
+  const el = document.getElementById("log");
+  el.textContent = (s + "\n" + el.textContent).slice(0, 3000);
+}
+
+// initial view: a frame only arrives with a tick — spin left+right (the
+// monster gets two free steps: it is already coming)
+(async () => { await tick("L"); await tick("R"); })();
+</script>
+</body>
+</html>

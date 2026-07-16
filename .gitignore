@@ -1,0 +1,17 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# model files
+*.gguf
+*.md
+# lo specchio del sito: cartella DERIVATA, la scrive www/make_catalog.py
+www/afterthebubble/
+www/*.Modelfile

@@ -8,11 +8,20 @@ vivono interamente nei pesi.
 Protocollo (stile wolf: il nastro non e' una cronologia, il frontend
 riserializza lo stato a ogni tick — si gioca per sempre):
 
-    pos:   0        1 .. 144           145 .. 288        289
-         <NOOP>  <C:b> x 144 (input)  <C:b> x 144 (out)  </s>
+    pos:   0        1 .. 144            145 .. 288         289
+         <NOOP>  <E/O:b> x 144 (input)  <E/O:b> x 144 (out)  </s>
 
 Il frontend manda <NOOP> + 144 token cella e chiede 145 token: la griglia
 nuova e l'EOS. Al tick dopo rispedisce la griglia appena generata.
+
+I token cella sono DUE FAMIGLIE ALTERNATE: le celle di indice pari sono
+<E:b>, le dispari <O:b> (b = 0 morta, 1 viva). Non e' estetica: il layer
+Go di ollama ha un guard anti-loop che TRONCA la generazione dopo ~30
+token identici consecutivi ("prediction aborted, token repeat limit
+reached"), e una griglia sparsa emetterebbe file lunghissime di celle
+morte identiche. Con la parita' due token consecutivi non possono mai
+essere uguali, e il guard non puo' scattare per costruzione. (llama.cpp
+puro non ha questo guard: e' proprio ollama, il runtime bersaglio.)
 
 Le idee specifiche di questo progetto:
 
@@ -44,10 +53,11 @@ Le idee specifiche di questo progetto:
     posizione di quella riga. Qui i token cella escono da 144 righe: un
     bonus sommato su 144 colonne POSB accumulerebbe 143 baseline negativi
     post-LN (le dim spente stanno sotto la media) e ribalterebbe il segno.
-    Rimedio: il wpe porta un FLAG condiviso da tutte le righe di
-    generazione cella (e uno per la riga dell'EOS): il bonus e' su una
-    dimensione sola. E' il rimedio del sink di snake, applicato
-    all'unembedding.
+    Rimedio: il wpe porta un FLAG per riga di generazione — uno per le
+    righe pari (tipo <E>), uno per le dispari (tipo <O>), uno per la riga
+    dell'EOS — e ogni famiglia di token legge solo il suo: il bonus e' su
+    una dimensione sola, e sceglie anche la famiglia giusta. E' il rimedio
+    del sink di snake, applicato all'unembedding.
 
 Calibrazione con COPERTURA ESAUSTIVA: le griglie di calibrazione
 includono 57 "grigliati di francobolli" che piazzano tutte e 512 le
@@ -124,8 +134,14 @@ def game(p):
 
 
 NOOP = game("<NOOP>")
-C_T = {v: game(f"<C:{v}>") for v in range(2)}  # <C:0> morta, <C:1> viva
+CE_T = {v: game(f"<E:{v}>") for v in range(2)}  # celle di indice pari
+CO_T = {v: game(f"<O:{v}>") for v in range(2)}  # celle di indice dispari
 V = len(tokens)
+
+
+def cell_tok(i, v):
+    """Token della cella i con valore v: la famiglia alterna con la parita'."""
+    return (CE_T if i % 2 == 0 else CO_T)[int(v)]
 
 # ========================== IPERPARAMETRI ====================================
 MAXPOS = 2 * N + 2  # 290: NOOP + input + output + EOS
@@ -159,7 +175,8 @@ CV = blk(2, _c)  # one-hot del token cella (morta/viva)
 BAL = blk(1, _c)[0]  # dim inerte del <NOOP> (parita' di varianza delle chiavi)
 FN = {k: blk(2, _c) for k in range(len(OFFS))}  # fetch del vicinato: 9 x (morta,viva)
 NXT = blk(2, _c)  # uscita della ROM: cella nuova (morta/viva)
-GFLAG = blk(1, _c)[0]  # flag wpe delle 144 righe di generazione cella
+PEV = blk(1, _c)[0]  # flag wpe delle righe di generazione delle celle pari
+POD = blk(1, _c)[0]  # flag wpe delle righe di generazione delle celle dispari
 EFLAG = blk(1, _c)[0]  # flag wpe della riga dell'EOS
 POSB = blk(MAXPOS, _c)
 assert _c[0] <= N_EMBD, f"layout {_c[0]} non entra in {N_EMBD}"
@@ -168,14 +185,15 @@ assert _c[0] <= N_EMBD, f"layout {_c[0]} non entra in {N_EMBD}"
 # Ogni token di gioco porta esattamente UN one-hot a scala RAW (+ il POSB dal
 # wpe): tutte le righe hanno la stessa varianza propria.
 wte = np.zeros((V, N_EMBD), dtype=np.float32)
-for v, t in C_T.items():
-    wte[t, CV[v]] = RAW
+for v in range(2):
+    wte[CE_T[v], CV[v]] = RAW  # le due famiglie sono identiche per il circuito:
+    wte[CO_T[v], CV[v]] = RAW  # la parita' vive solo nell'unembedding
 wte[NOOP, BAL] = RAW
 wpe = np.zeros((MAXPOS, N_EMBD), dtype=np.float32)
 for p in range(MAXPOS):
     wpe[p, POSB[p]] = 1.0
 for p in range(GEN0, GENL):
-    wpe[p, GFLAG] = 1.0
+    wpe[p, PEV if (p - GEN0) % 2 == 0 else POD] = 1.0
 wpe[GENL, EFLAG] = 1.0
 
 # ---- attention: 9 selettori per-riga, wrap toroidale nelle query -------------
@@ -226,18 +244,21 @@ def build_mlp(thr):
 
 
 # ---- unembedding: valore ROM + bonus di fase ---------------------------------
-# Sulle 144 righe cella il bonus (uguale per <C:0> e <C:1>, dal GFLAG del
-# wpe) alza il tipo giusto; a decidere tra i due e' il one-hot NXT scritto
-# dalla ROM. Sulla riga dell'EOS solo l'EOS ha il bonus (EFLAG), e vince su
-# qualsiasi valore ROM.
+# Ogni famiglia legge solo il flag della SUA parita': sulle righe pari
+# vincono i token <E>, sulle dispari i token <O> (l'altra famiglia vede il
+# proprio flag spento, leggermente negativo post-LN). Dentro la famiglia
+# decide il one-hot NXT scritto dalla ROM. Sulla riga dell'EOS solo l'EOS
+# ha il bonus (EFLAG), e vince su qualsiasi valore ROM.
 Wout = np.zeros((V, N_EMBD), dtype=np.float32)
-for v, t in C_T.items():
-    Wout[t, NXT[v]] = 1.0
+for v in range(2):
+    Wout[CE_T[v], NXT[v]] = 1.0
+    Wout[CO_T[v], NXT[v]] = 1.0
 
 
 def set_phase_bonus(B):
-    for t in C_T.values():
-        Wout[t, GFLAG] = B
+    for v in range(2):
+        Wout[CE_T[v], PEV] = B
+        Wout[CO_T[v], POD] = B
     Wout[EOS, EFLAG] = B
 
 
@@ -292,8 +313,8 @@ def tick_ids(g):
     """Trascrizione completa di un tick (input + risposta attesa)."""
     g2 = life_step(g)
     ids = [NOOP]
-    ids += [C_T[int(v)] for v in g.flat]
-    ids += [C_T[int(v)] for v in g2.flat]
+    ids += [cell_tok(i, v) for i, v in enumerate(g.flat)]
+    ids += [cell_tok(i, v) for i, v in enumerate(g2.flat)]
     ids += [EOS]
     return ids
 
@@ -408,7 +429,8 @@ def calibrate_phase_bonus(seed=17, n_random=10):
         _, XLn, _ = forward_all(ids)
         for r in range(GEN0, GENL + 1):
             dmax = max(dmax, XLn[r, NXT].max())
-            pmin = min(pmin, XLn[r, GFLAG if r < GENL else EFLAG])
+            flag = EFLAG if r == GENL else (PEV if (r - GEN0) % 2 == 0 else POD)
+            pmin = min(pmin, XLn[r, flag])
     assert pmin > 0
     B = 3.0 * dmax / pmin
     print(f"  bonus di fase: Dmax={dmax:.2f} Pmin={pmin:.2f} -> B={B:.1f}")

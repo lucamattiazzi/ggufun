@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>base64 on ollama+GGUF</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<style>
+  /* 1996: browser defaults do the styling; CSS only where HTML cannot go */
+  body { font-family: "Times New Roman", Times, serif; background: #c0c0c0; text-align: center; }
+  h1 { font-size: 20px; }
+  textarea, #out { font: 12px/1.5 "Courier New", Courier, monospace; width: 92%; max-width: 560px;
+                   box-sizing: border-box; }
+  #out { display: block; margin: 0 auto; min-height: 4.5em; background: #ffffff;
+         border: 1px inset #808080; padding: 4px 6px; text-align: left;
+         white-space: pre-wrap; word-break: break-all; }
+  #log { font: 11px/1.4 "Courier New", Courier, monospace; text-align: left; white-space: pre-wrap;
+         word-break: break-all; max-width: 640px; max-height: 100px; overflow-y: auto;
+         margin: 12px auto; background: #ffffff; border: 1px inset #808080; padding: 4px 6px; }
+</style>
+</head>
+<body>
+<h1>base64</h1>
+<p>text in, base64 out &middot; <b id="meta">0 bytes</b><br>
+   <output id="status"></output></p>
+
+<p><label for="src">plain text</label><br>
+   <textarea id="src" rows="4" spellcheck="false">after the bubble bursts, the machines remain</textarea></p>
+<p>
+  <button id="go">encode &#9654;</button>
+  <button id="clear">clear</button>
+  <button id="zeros">24 zero bytes</button>
+</p>
+
+<p><label for="out">base64</label></p>
+<output id="out"></output>
+
+<p><small>every character above was emitted by ollama, one token at a time.
+   the page sends bytes and concatenates tokens &mdash; it never encodes anything</small></p>
+<pre id="log"></pre>
+
+
+
+<script>
+// ---- configuration -----------------------------------------------------------
+const OLLAMA = "";
+const MODEL  = "base64";
+// 21 = il piu' grande multiplo di 3 che sta sotto il guard anti-loop di ollama
+// (che tronca a 31 token identici consecutivi: 21 byte danno al massimo 28
+// caratteri uguali). Multiplo di 3 => base64(a+b) == base64(a)+base64(b), e
+// solo l'ultimo blocco porta il padding. La macchina ne regge 48 per chiamata.
+const CHUNK = 21;
+const HEX = b => "<B:" + b.toString(16).toUpperCase().padStart(2, "0") + ">";
+const nChars = L => 4 * Math.ceil(L / 3);
+
+let busy = false;
+
+// ---- one call: up to CHUNK bytes -> their base64, computed by the model ---------
+async function encodeChunk(bytes) {
+  const prompt = "E" + [...bytes].map(HEX).join("") + ";";
+  const r = await fetch(`${OLLAMA}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: MODEL, prompt, raw: true, stream: false,
+      options: { temperature: 0, num_predict: nChars(bytes.length) + 1, repeat_penalty: 1.0 }
+    })
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const text = (await r.json()).response;
+  // il modello sa quanti caratteri servono: se ne tornano meno, a tagliarli e'
+  // stato il runtime, e mostrare il troncamento e' meglio che mostrare un
+  // base64 sbagliato senza dirlo
+  if (text.length !== nChars(bytes.length))
+    throw new Error(`ollama returned ${text.length} of ${nChars(bytes.length)} characters `
+                  + `(repeat guard? got "${text.slice(0, 40)}")`);
+  return text;
+}
+
+async function encodeAll() {
+  if (busy) return;
+  busy = true;
+  setStatus("encoding…");
+  const bytes = new TextEncoder().encode(document.getElementById("src").value);
+  const t0 = performance.now();
+  let out = "";
+  try {
+    for (let i = 0; i < bytes.length; i += CHUNK)
+      out += await encodeChunk(bytes.slice(i, i + CHUNK));
+  } catch (e) {
+    setStatus(`ollama error: ${e.message} (OLLAMA_ORIGINS? model created?)`);
+    document.getElementById("out").textContent = out;
+    busy = false;
+    return;
+  }
+  const dt = Math.round(performance.now() - t0);
+  document.getElementById("out").textContent = out;
+  const calls = Math.ceil(bytes.length / CHUNK);
+  log(`${bytes.length} bytes -> ${out.length} chars in ${calls} call(s), ${dt} ms`);
+  setStatus("");
+  busy = false;
+}
+
+// ---- input --------------------------------------------------------------------
+function syncMeta() {
+  const n = new TextEncoder().encode(document.getElementById("src").value).length;
+  document.getElementById("meta").textContent =
+    `${n} bytes · ${nChars(n)} chars · ${Math.ceil(n / CHUNK)} call(s)`;
+}
+document.getElementById("src").addEventListener("input", syncMeta);
+document.getElementById("go").onclick = encodeAll;
+document.getElementById("clear").onclick = () => {
+  document.getElementById("src").value = "";
+  document.getElementById("out").textContent = "";
+  syncMeta(); setStatus("");
+};
+document.getElementById("zeros").onclick = () => {
+  document.getElementById("src").value = "\0".repeat(24);
+  syncMeta();
+  setStatus("24 NUL bytes: one call would emit 32 identical 'A' and ollama would cut it at 31 — chunking keeps it whole");
+};
+
+// ---- utils ----------------------------------------------------------------------
+function setStatus(s) { document.getElementById("status").textContent = s; }
+function log(s) {
+  const el = document.getElementById("log");
+  el.textContent = (s + "\n" + el.textContent).slice(0, 3000);
+}
+
+syncMeta();
+encodeAll();
+</script>
+</body>
+</html>
