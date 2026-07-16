@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>machine</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="plate"><p><small>reading the plate&hellip;</small></p></main>
+<script src="catalog.js"></script>
+<script>
+loadMachines()
+  .then((ms) => renderMachine(ms, document.getElementById("plate")))
+  .catch((e) => {
+    document.getElementById("plate").innerHTML =
+      `<h1>ledger unreadable</h1><p><small>${e.message}</small></p>`;
+  });
+</script>
+</body>
+</html>

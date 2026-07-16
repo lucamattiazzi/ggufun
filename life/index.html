@@ -2,61 +2,73 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Game of Life on ollama+GGUF</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
-  body { font-family: system-ui, sans-serif; background: #1b1b1f; color: #e5e5e5;
-         display: flex; flex-direction: column; align-items: center; padding: 24px; }
-  h1 { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-  canvas { border: 1px solid #444; margin: 16px 0; image-rendering: pixelated; cursor: pointer; }
-  #hud { display: flex; gap: 20px; font-size: 14px; flex-wrap: wrap; justify-content: center; }
-  #controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-  #controls button, #controls select { padding: 6px 14px; background: #2d2d33; color: #e5e5e5;
-              border: 1px solid #555; border-radius: 6px; cursor: pointer; font-size: 13px; }
-  #controls button:hover { border-color: #98c379; }
-  #log { font-family: monospace; font-size: 11px; color: #8a8a8a; max-width: 640px;
-         word-break: break-all; margin-top: 16px; max-height: 100px; overflow-y: auto; }
-  #info-btn { margin: 0; padding: 0; width: 24px; height: 24px; border-radius: 50%;
-              font: 600 14px/1 serif; font-style: italic; background: #2d2d33;
-              color: #e5e5e5; border: 1px solid #555; cursor: pointer; }
-  #info-panel { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65);
-                z-index: 10; align-items: center; justify-content: center; }
-  #info-panel.open { display: flex; }
-  #info-card { background: #232327; border: 1px solid #555; border-radius: 10px;
-               max-width: 560px; max-height: 80vh; overflow-y: auto; padding: 20px 24px;
-               font-size: 14px; line-height: 1.55; }
-  #info-card h2 { font-size: 16px; margin-top: 0; }
-  #info-card code { background: #1b1b1f; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
-  #info-card p { margin: 10px 0; }
-  #info-card button { margin-top: 12px; padding: 6px 16px; background: #2d2d33;
-                      color: #e5e5e5; border: 1px solid #555; border-radius: 6px; cursor: pointer; }
-  #gh-link { position: fixed; top: 12px; right: 16px; display: flex; align-items: center;
-             gap: 6px; color: #8a8a8a; text-decoration: none; font-size: 13px; }
-  #gh-link:hover { color: #e5e5e5; }
-  #gh-link svg { width: 18px; height: 18px; fill: currentColor; }
+  :root { --bg: #fff; --fg: #222; --muted: #777; --link: #00e; }
+  :root.dark { --bg: #16161a; --fg: #d6d6d6; --muted: #969696; --link: #9db8ff; }
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light) { --bg: #16161a; --fg: #d6d6d6; --muted: #969696; --link: #9db8ff; }
+  }
+  html { max-width: 70ch; padding: 1em; margin: auto; line-height: 1.6;
+         font-family: sarabun, system-ui, sans-serif; background: var(--bg); }
+  body { color: var(--fg); }
+  a { color: var(--link); text-decoration: none; }
+  header { border-bottom: 1px solid var(--fg); display: flex;
+           justify-content: space-between; align-items: flex-end; }
+  header h1 { margin: 0 0 .2em; font-size: 1.3em; }
+  header nav { font-size: .85em; margin-bottom: .5em; }
+  header nav a { color: var(--fg); }
+  button, select { font: inherit; font-size: .85em; color: var(--link);
+           background: none; border: 1px solid var(--fg); border-radius: 6px;
+           padding: .1em .8em; cursor: pointer; }
+  select { color: var(--fg); }
+  dialog { border: 1px solid var(--fg); border-radius: 6px; max-width: 34rem;
+           padding: 1em 1.5em; line-height: 1.6; color: var(--fg);
+           background: var(--bg); }
+  dialog::backdrop { background: rgba(0, 0, 0, .4); }
+  dialog button { display: block; margin-left: auto; }
+  canvas { display: block; margin: 1em auto; image-rendering: pixelated;
+           max-width: min(100%, 480px); height: auto; background: #232327;
+           border-radius: 6px; cursor: pointer; }
+  #controls { text-align: center; }
+  #wire { margin-top: 2em; border-top: 1px solid var(--fg); padding-top: .5em;
+          color: var(--muted); font-size: .85em; }
+  #wire summary { cursor: pointer; }
+  #wire-log { font-family: monospace; font-size: .8em; line-height: 1.5;
+              white-space: pre-wrap; word-break: break-all;
+              max-height: 45vh; overflow-y: auto; margin: .5em 0 0; }
 </style>
+<script>
+  if (localStorage.theme) document.documentElement.className = localStorage.theme;
+  function flipTheme() {
+    const dark = document.documentElement.className === "dark" ||
+      (!document.documentElement.className &&
+       matchMedia("(prefers-color-scheme: dark)").matches);
+    localStorage.theme = dark ? "light" : "dark";
+    document.documentElement.className = localStorage.theme;
+  }
+</script>
 </head>
 <body>
-<a id="gh-link" href="https://github.com/lucamattiazzi/ggufun" target="_blank" rel="noopener">
-  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-  GitHub
-</a>
-<h1>Game of Life
-  <button id="info-btn" title="what is going on?">i</button></h1>
-<div id="hud">
-  <span>generation: <b id="gen">0</b></span>
-  <span>population: <b id="pop">0</b></span>
-  <span id="status"></span>
-</div>
+<header>
+  <h1>Game of Life</h1>
+  <nav><a href="../">home</a> · <button id="info-btn">info</button> ·
+       <button onclick="flipTheme()" title="light/dark" aria-label="toggle dark mode">&#9681;</button></nav>
+</header>
+
+<p>generation: <b id="gen">0</b> &middot; population: <b id="pop">0</b> &middot;
+   <output id="status"></output></p>
 <canvas id="cv" width="480" height="480"></canvas>
-<div id="controls">
-  <button id="play">▶ play</button>
+<p id="controls">
+  <button id="play">&#9654; play</button>
   <button id="step">step</button>
   <button id="clear">clear</button>
   <button id="random">random</button>
   <select id="preset">
-    <option value="">preset…</option>
+    <option value="">preset&hellip;</option>
     <option value="glider">glider</option>
     <option value="blinker">blinker</option>
     <option value="toad">toad</option>
@@ -64,31 +76,34 @@
     <option value="lwss">lightweight spaceship</option>
     <option value="rpentomino">r-pentomino</option>
   </select>
-</div>
-<div style="margin-top:10px; font-size:13px; color:#8a8a8a">
-  click cells to toggle them, the grid is a torus, every next generation is computed by ollama
-</div>
-<div id="log"></div>
+</p>
+<p><small>click cells to toggle them, the grid is a torus, every next
+   generation is computed by ollama</small></p>
 
-<div id="info-panel">
-  <div id="info-card">
-    <h2>What is this?</h2>
-    <p>
-      This is a Conway's Game of Life implementation whose rules live completely
-      in a GGUF file run by a standard ollama server. The GGUF was hand crafted
-      to compute Life, without any training.
-    </p>
-    <p>
-      Every tick the frontend sends the 144 cells of the grid and gets back
-      145 tokens: the next generation, cell by cell, plus an end-of-turn
-      token. Nine attention heads fetch each cell's 3×3 neighbourhood (the
-      torus wrap is wired into the attention queries) and a 512-neuron MLP, one
-      neuron per possible neighbourhood, applies Conway's rules.
-      The frontend does nothing but draw what ollama returns.
-    </p>
-    <button id="info-close">close</button>
-  </div>
-</div>
+<details id="wire">
+  <summary>server log — <b id="wire-n">0</b> messages</summary>
+  <pre id="wire-log"></pre>
+</details>
+
+<dialog id="info">
+  <h2>What is this?</h2>
+  <p>This is a Conway's Game of Life implementation whose rules live
+     completely in a GGUF file run by a standard ollama server. The GGUF was
+     hand crafted to compute Life, without any training.</p>
+  <p>Every tick the frontend sends the 144 cells of the grid and gets back
+     145 tokens: the next generation, cell by cell, plus an end-of-turn
+     token. Nine attention heads fetch each cell's 3&times;3 neighbourhood
+     (the torus wrap is wired into the attention queries) and a 512-neuron
+     MLP, one neuron per possible neighbourhood, applies Conway's rules. The
+     frontend does nothing but draw what ollama returns.</p>
+  <button id="info-close">close</button>
+</dialog>
+
+<script>
+  const dlg = document.getElementById("info");
+  document.getElementById("info-btn").onclick = () => dlg.showModal();
+  document.getElementById("info-close").onclick = () => dlg.close();
+</script>
 
 <script>
 // ---- configuration -----------------------------------------------------------
@@ -113,7 +128,10 @@ let waiting = false;
 async function tick() {
   if (waiting) return;
   waiting = true;
-  const prompt = "<NOOP>" + grid.map(c => c ? "<C:1>" : "<C:0>").join("");
+  // due famiglie di token alternate per parita': mai due token uguali di fila
+  // (il guard anti-loop di ollama tronca dopo ~30 token identici consecutivi)
+  const prompt = "<NOOP>" + grid.map((c, i) => `<${i % 2 ? "O" : "E"}:${c}>`).join("");
+  wire(">", prompt);
   let text;
   try {
     const r = await fetch(`${OLLAMA}/api/generate`, {
@@ -130,14 +148,14 @@ async function tick() {
     setStatus(`ollama error: ${e.message} (OLLAMA_ORIGINS? model created?)`);
     playing = false; syncPlay(); waiting = false; return;
   }
-  const cells = [...text.matchAll(/<C:([01])>/g)].map(m => +m[1]);
+  wire("<", text);
+  const cells = [...text.matchAll(/<[EO]:([01])>/g)].map(m => +m[1]);
   if (cells.length !== N) {
     setStatus(`unexpected output: ${text.slice(0, 80)}`);
     playing = false; syncPlay(); waiting = false; return;
   }
   grid = cells;
   generation++;
-  log(`gen ${generation}: ${grid.reduce((a, b) => a + b, 0)} alive`);
   draw();
   setStatus("");
   waiting = false;
@@ -170,7 +188,9 @@ function draw() {
 // ---- input --------------------------------------------------------------------
 cv.addEventListener("click", e => {
   const r = cv.getBoundingClientRect();
-  const x = Math.floor((e.clientX - r.left) / CW), y = Math.floor((e.clientY - r.top) / CW);
+  const scale = cv.width / r.width;   // il canvas puo' essere ridimensionato dal CSS
+  const x = Math.floor((e.clientX - r.left) * scale / CW);
+  const y = Math.floor((e.clientY - r.top) * scale / CW);
   if (x < 0 || x >= G || y < 0 || y >= G) return;
   grid[y * G + x] ^= 1;
   draw();
@@ -204,15 +224,15 @@ document.addEventListener("keydown", e => {
   document.getElementById("play").onclick();
 });
 
-// ---- info panel + utils -----------------------------------------------------------
-const panel = document.getElementById("info-panel");
-document.getElementById("info-btn").onclick = () => panel.classList.add("open");
-document.getElementById("info-close").onclick = () => panel.classList.remove("open");
-panel.addEventListener("click", e => { if (e.target === panel) panel.classList.remove("open"); });
+// ---- utils ----------------------------------------------------------------------
 function setStatus(s) { document.getElementById("status").textContent = s; }
-function log(s) {
-  const el = document.getElementById("log");
-  el.textContent = (s + "\n" + el.textContent).slice(0, 3000);
+// il registro di bordo: l'intera conversazione col server, un rigo a messaggio
+let wireN = 0;
+function wire(dir, s) {
+  const el = document.getElementById("wire-log");
+  el.textContent += `${dir} ${s}\n`;
+  document.getElementById("wire-n").textContent = ++wireN;
+  el.scrollTop = el.scrollHeight;
 }
 
 // start with a glider

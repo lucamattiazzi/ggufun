@@ -7,34 +7,54 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
+  :root { --bg: #fff; --fg: #222; --muted: #777; --link: #00e; }
+  :root.dark { --bg: #16161a; --fg: #d6d6d6; --muted: #969696; --link: #9db8ff; }
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light) { --bg: #16161a; --fg: #d6d6d6; --muted: #969696; --link: #9db8ff; }
+  }
   html { max-width: 70ch; padding: 1em; margin: auto; line-height: 1.6;
-         font-family: sarabun, system-ui, sans-serif; }
-  body { color: #222; }
-  a { color: #00e; text-decoration: none; }
-  header { border-bottom: 1px solid #222; display: flex;
+         font-family: sarabun, system-ui, sans-serif; background: var(--bg); }
+  body { color: var(--fg); }
+  a { color: var(--link); text-decoration: none; }
+  header { border-bottom: 1px solid var(--fg); display: flex;
            justify-content: space-between; align-items: flex-end; }
   header h1 { margin: 0 0 .2em; font-size: 1.3em; }
-  header a { color: #222; font-size: .85em; margin-bottom: .5em; }
+  header a { color: var(--fg); font-size: .85em; margin-bottom: .5em; }
   canvas { display: block; margin: 1em auto; image-rendering: pixelated;
            max-width: 100%; background: #26262e; }
   #hp { color: #c00; letter-spacing: 2px; }
-  #log { font-family: monospace; font-size: .7em; line-height: 1.4; color: #777;
-         white-space: pre-wrap; word-break: break-all; max-height: 100px;
-         overflow-y: auto; margin-top: 1em; }
-  button { font: inherit; font-size: .85em; color: #00e; background: none;
-           border: 1px solid #222; border-radius: 6px; padding: .1em .8em;
+  #wire { margin-top: 2em; border-top: 1px solid var(--fg); padding-top: .5em;
+          color: var(--muted); font-size: .85em; }
+  #wire summary { cursor: pointer; }
+  #wire-log { font-family: monospace; font-size: .8em; line-height: 1.5;
+              white-space: pre-wrap; word-break: break-all;
+              max-height: 45vh; overflow-y: auto; margin: .5em 0 0; }
+  button { font: inherit; font-size: .85em; color: var(--link); background: none;
+           border: 1px solid var(--fg); border-radius: 6px; padding: .1em .8em;
            cursor: pointer; }
-  dialog { border: 1px solid #222; border-radius: 6px; max-width: 34rem;
-           padding: 1em 1.5em; line-height: 1.6; color: #222; }
+  dialog { border: 1px solid var(--fg); border-radius: 6px; max-width: 34rem;
+           padding: 1em 1.5em; line-height: 1.6; color: var(--fg);
+           background: var(--bg); }
   dialog::backdrop { background: rgba(0, 0, 0, .4); }
   dialog button { display: block; margin-left: auto; }
   dialog code { font-size: .85em; }
 </style>
+<script>
+  if (localStorage.theme) document.documentElement.className = localStorage.theme;
+  function flipTheme() {
+    const dark = document.documentElement.className === "dark" ||
+      (!document.documentElement.className &&
+       matchMedia("(prefers-color-scheme: dark)").matches);
+    localStorage.theme = dark ? "light" : "dark";
+    document.documentElement.className = localStorage.theme;
+  }
+</script>
 </head>
 <body>
 <header>
   <h1>Doom</h1>
-  <nav><a href="../">home</a> · <button id="info-btn">info</button></nav>
+  <nav><a href="../">home</a> · <button id="info-btn">info</button> ·
+       <button onclick="flipTheme()" title="light/dark" aria-label="toggle dark mode">&#9681;</button></nav>
 </header>
 
 <p><b id="hp">&hearts;&hearts;&hearts;&hearts;&hearts;</b> &middot;
@@ -44,7 +64,11 @@
 <p>arrows: &larr; &rarr; turn, &uarr; &darr; move &mdash; space: fire.
    The enemy only moves when you do.
    <button id="restart" style="display:none">restart</button></p>
-<pre id="log"></pre>
+
+<details id="wire">
+  <summary>server log — <b id="wire-n">0</b> messages</summary>
+  <pre id="wire-log"></pre>
+</details>
 
 <dialog id="info">
   <h2>This whole game is one GGUF</h2>
@@ -89,6 +113,7 @@ async function tick(input) {
   waiting = true;
   const prompt = `<NOOP><X:${state.x}><Y:${state.y}><A:${state.a}>` +
                  `<EX:${state.ex}><EY:${state.ey}><HP:${state.hp}><T:${state.t}><I:${input}>`;
+  wire(">", prompt);
   let text;
   try {
     const r = await fetch(`${OLLAMA}/api/generate`, {
@@ -105,6 +130,7 @@ async function tick(input) {
     setStatus(`ollama error: ${e.message} (OLLAMA_ORIGINS? model created?)`);
     waiting = false; return;
   }
+  wire("<", text);
   const m = (re) => { const x = text.match(re); return x ? x : null; };
   const mX = m(/<X:(\d+)>/), mY = m(/<Y:(\d+)>/), mA = m(/<A:(\d+)>/);
   const mEX = m(/<EX:(\d+)>/), mEY = m(/<EY:(\d+)>/);
@@ -117,7 +143,6 @@ async function tick(input) {
   }
   state = { x: +mX[1], y: +mY[1], a: +mA[1], ex: +mEX[1], ey: +mEY[1],
             hp: +mHP[1], t: +mT[1] };
-  log(`> <I:${input}>  < HP:${state.hp} ${mST[1]}${mHIT && mHIT[1] === "1" ? " HIT!" : ""}`);
   document.getElementById("hp").textContent = "♥".repeat(state.hp) + "♡".repeat(HP0 - state.hp);
   document.getElementById("ang").textContent = DIRS[state.a];
   if (mST[1] === "KILL") {
@@ -188,9 +213,13 @@ document.getElementById("restart").onclick = () => {
 // ---- utils ----------------------------------------------------------------------
 function setStatus(s) { document.getElementById("status").textContent = s; }
 function flash(s) { setStatus(s); setTimeout(() => { if (!over) setStatus(""); }, 800); }
-function log(s) {
-  const el = document.getElementById("log");
-  el.textContent = (s + "\n" + el.textContent).slice(0, 3000);
+// il registro di bordo: l'intera conversazione col server, un rigo a messaggio
+let wireN = 0;
+function wire(dir, s) {
+  const el = document.getElementById("wire-log");
+  el.textContent += `${dir} ${s}\n`;
+  document.getElementById("wire-n").textContent = ++wireN;
+  el.scrollTop = el.scrollHeight;
 }
 
 // initial view: a frame only arrives with a tick — spin left+right (the

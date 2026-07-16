@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>catalog</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  /* a narrow frame needs small type; nothing else */
+  body { font-size: 14px; }
+  h2 { font-size: 1em; border-bottom: 1px solid #888; }
+  ul { list-style: square; padding-left: 20px; }
+</style>
+</head>
+<body>
+<p><strong><a href="home.html" target="main">&raquo; THE FLOOR</a></strong></p>
+<nav id="nav"><p><small>reading the ledger&hellip;</small></p></nav>
+<hr>
+<p><small><a href="https://github.com/lucamattiazzi/ggufun" target="_blank">blueprints (github)</a></small></p>
+<p align="center">
+  <img src="assets/badge-notraining.svg" width="88" height="31" alt="no training - zero epochs">
+</p>
+<script src="catalog.js"></script>
+<script>
+loadMachines()
+  .then((ms) => renderNav(ms, document.getElementById("nav")))
+  .catch((e) => {
+    document.getElementById("nav").innerHTML =
+      `<p><small>ledger unreadable: ${e.message}</small></p>`;
+  });
+</script>
+</body>
+</html>

@@ -30,6 +30,15 @@ const TYPES = {
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
 
+// il registro di bordo: ogni scambio col motore viene raccontato alla pagina
+// che ospita l'iframe (che sta FUORI dallo scope: serve includeUncontrolled).
+// Le risposte sono pagine intere, anche da 160 KB: nel log vanno come un rigo
+// con conteggio e anteprima, la pagina completa e' gia' nell'iframe.
+async function tell(line) {
+  for (const c of await self.clients.matchAll({ includeUncontrolled: true }))
+    c.postMessage(line);
+}
+
 self.addEventListener("fetch", (e) => {
   const u = new URL(e.request.url);
   if (u.origin !== location.origin || !u.pathname.startsWith(SCOPE)) return;
@@ -45,6 +54,7 @@ async function serve(path) {
     model: MODEL, prompt: `GET ${path};`, raw: true, stream: false,
     options: { temperature: 0, num_predict: 2, repeat_penalty: 1.0 },
   });
+  tell(`> GET ${path};`);
   let text;
   try {
     const r = await fetch("/api/generate", {
@@ -60,6 +70,8 @@ async function serve(path) {
     return new Response(`<h1>502</h1><p>the weights are unreachable: ${err.message}`,
       { status: 502, headers: { "Content-Type": TYPES.html } });
   }
+  const preview = text.slice(0, 100).replace(/\s+/g, " ");
+  tell(`< [${text.length} B] ${preview}${text.length > 100 ? "…" : ""}`);
   const ext = path.split(".").pop().toLowerCase();
   return new Response(text, { headers: { "Content-Type": TYPES[ext] || TYPES.html } });
 }

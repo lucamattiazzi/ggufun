@@ -7,41 +7,65 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
+  :root { --bg: #fff; --fg: #222; --muted: #777; --link: #00e; }
+  :root.dark { --bg: #16161a; --fg: #d6d6d6; --muted: #969696; --link: #9db8ff; }
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light) { --bg: #16161a; --fg: #d6d6d6; --muted: #969696; --link: #9db8ff; }
+  }
   html { max-width: 70ch; padding: 1em; margin: auto; line-height: 1.6;
-         font-family: sarabun, system-ui, sans-serif; }
-  body { color: #222; }
-  a { color: #00e; text-decoration: none; }
-  header { border-bottom: 1px solid #222; display: flex;
+         font-family: sarabun, system-ui, sans-serif; background: var(--bg); }
+  body { color: var(--fg); }
+  a { color: var(--link); text-decoration: none; }
+  header { border-bottom: 1px solid var(--fg); display: flex;
            justify-content: space-between; align-items: flex-end; }
   header h1 { margin: 0 0 .2em; font-size: 1.3em; }
-  header a { color: #222; font-size: .85em; margin-bottom: .5em; }
+  header a { color: var(--fg); font-size: .85em; margin-bottom: .5em; }
   #bar { margin: 1em 0 .3em; }
   #path { font-family: monospace; font-size: .85em; width: 16em;
-          border: 1px solid #222; border-radius: 6px; padding: .1em .5em; }
+          border: 1px solid var(--fg); border-radius: 6px; padding: .1em .5em;
+          background: var(--bg); color: var(--fg); }
+  /* lo specchio nei pesi e' un sito del 1996: resta chiaro anche al buio */
   iframe { width: 100%; height: 620px; background: #fff;
-           border: 1px solid #222; border-radius: 6px; }
-  #log { font-family: monospace; font-size: .7em; line-height: 1.4; color: #777;
-         white-space: pre-wrap; word-break: break-all; max-height: 90px;
-         overflow-y: auto; margin-top: 1em; }
-  button { font: inherit; font-size: .85em; color: #00e; background: none;
-           border: 1px solid #222; border-radius: 6px; padding: .1em .8em;
+           border: 1px solid var(--fg); border-radius: 6px; }
+  #wire { margin-top: 2em; border-top: 1px solid var(--fg); padding-top: .5em;
+          color: var(--muted); font-size: .85em; }
+  #wire summary { cursor: pointer; }
+  #wire-log { font-family: monospace; font-size: .8em; line-height: 1.5;
+              white-space: pre-wrap; word-break: break-all;
+              max-height: 45vh; overflow-y: auto; margin: .5em 0 0; }
+  button { font: inherit; font-size: .85em; color: var(--link); background: none;
+           border: 1px solid var(--fg); border-radius: 6px; padding: .1em .8em;
            cursor: pointer; }
-  dialog { border: 1px solid #222; border-radius: 6px; max-width: 34rem;
-           padding: 1em 1.5em; line-height: 1.6; color: #222; }
+  dialog { border: 1px solid var(--fg); border-radius: 6px; max-width: 34rem;
+           padding: 1em 1.5em; line-height: 1.6; color: var(--fg);
+           background: var(--bg); }
   dialog::backdrop { background: rgba(0, 0, 0, .4); }
   dialog button { display: block; margin-left: auto; }
   dialog code { font-size: .85em; }
-  footer { border-top: 1px solid #222; margin-top: 2em; padding-top: .5em;
-           color: #777; font-size: .85em; }
+  footer { border-top: 1px solid var(--fg); margin-top: 2em; padding-top: .5em;
+           color: var(--muted); font-size: .85em; }
 </style>
+<script>
+  if (localStorage.theme) document.documentElement.className = localStorage.theme;
+  function flipTheme() {
+    const dark = document.documentElement.className === "dark" ||
+      (!document.documentElement.className &&
+       matchMedia("(prefers-color-scheme: dark)").matches);
+    localStorage.theme = dark ? "light" : "dark";
+    document.documentElement.className = localStorage.theme;
+  }
+</script>
 </head>
 <body>
 <header>
   <h1>static site hosting</h1>
-  <nav><a href="../">home</a> · <button id="info-btn">info</button></nav>
+  <nav><a href="../">home</a> · <button id="info-btn">info</button> ·
+       <button onclick="flipTheme()" title="light/dark" aria-label="toggle dark mode">&#9681;</button></nav>
 </header>
 
-<p>the site below is not on a disk: it is being decoded, page by page &middot;
+<p>the site below is not on a disk: it is being decoded, page by page.
+   it is also not this site &mdash; it is the previous one, preserved in the
+   weights &middot;
    <output id="status">registering the server&hellip;</output></p>
 
 <form id="bar">
@@ -51,22 +75,30 @@
 <p><small>try
   <a href="#" data-go="/index.html">/index.html</a> &middot;
   <a href="#" data-go="/about.html">/about.html</a> &middot;
-  <a href="#" data-go="/404.html">/404.html</a> &middot;
+  <a href="#" data-go="/site/style.css">/site/style.css</a> &middot;
+  <a href="#" data-go="/machines.json">/machines.json</a> &middot;
   <a href="#" data-go="/nope.html">/nope.html</a> &middot;
   <a href="#" data-go="/../etc/passwd">/../etc/passwd</a>
 </small></p>
 
 <iframe id="page" title="the site, as ollama returns it"></iframe>
-<pre id="log"></pre>
+
+<details id="wire">
+  <summary>server log — <b id="wire-n">0</b> messages</summary>
+  <pre id="wire-log"></pre>
+</details>
 
 <dialog id="info">
   <h2>A web server made of weights</h2>
   <p>This GGUF <i>is</i> a website. <code>compile_site.py</code> welds a
      whole static site into the weights — every page becomes one token —
      and a stock ollama serves it: <code>GET /page.html</code> as the
-     prompt, the page as the completion. The model in the demo carries a
-     full mirror of this very site: the landing, an about page and the 404,
-     in 98&nbsp;KB of GGUF.</p>
+     prompt, the page as the completion. The model in the demo carries the
+     <i>previous</i> incarnation of this site — "after the bubble", a 1996
+     frameset catalog, retired from the web and preserved whole in
+     370&nbsp;KB of GGUF: banner, nav, nameplates, stylesheet, manifest,
+     even the background tile, base64'd into the CSS. A museum piece,
+     served from memory.</p>
   <p>The frame below is a real browsing context: a service worker
      (<code>sw.js</code>) turns every fetch under its scope into two ollama
      tokens. The frameset loads its banner, which loads its stylesheet,
@@ -98,7 +130,16 @@
 // bar: it holds no list of pages, and never learns one.
 const $ = (id) => document.getElementById(id);
 const setStatus = (t) => { $("status").textContent = t; };
-const log = (t) => { $("log").textContent = t + "\n" + $("log").textContent; };
+// il registro di bordo: le righe arrivano dal service worker via postMessage
+// (la conversazione vera avviene la' dentro; le risposte sono pagine intere,
+// quindi nel log vanno con conteggio byte e anteprima)
+let wireN = 0;
+navigator.serviceWorker && navigator.serviceWorker.addEventListener("message", (e) => {
+  const el = $("wire-log");
+  el.textContent += String(e.data) + "\n";
+  $("wire-n").textContent = ++wireN;
+  el.scrollTop = el.scrollHeight;
+});
 
 async function boot() {
   if (!navigator.serviceWorker) {
@@ -132,7 +173,6 @@ function go(path) {
   const f = $("page");
   f.onload = () => {
     setStatus(`${path} — served from the weights in ${Math.round(performance.now() - t0)} ms`);
-    log(`> GET ${path};`);
   };
   // a real URL, not srcdoc: a <frameset> resolves its frames against the
   // document's base url, and srcdoc has none — there would be nothing to load

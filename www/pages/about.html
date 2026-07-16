@@ -2,48 +2,45 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>about</title>
 <style>
-  html { max-width: 70ch; padding: 1em; margin: auto; line-height: 1.6;
-         font-family: sarabun, system-ui, sans-serif; }
-  body { color: #222; }
-  a { color: #00e; text-decoration: none; }
-  h1, h2 { border-bottom: 1px solid #222; padding-bottom: .2em; }
-  h1 { font-size: 1.3em; }
-  h2 { font-size: 1.1em; border-bottom: 0; }
-  .badge { border: 1px solid #222; border-radius: 6px; padding: .5em .8em;
-           font-family: monospace; font-size: .8em; text-align: center; }
-  samp { background: #eee; padding: 0 .3em; }
-  footer { border-top: 1px solid #222; margin-top: 2em; padding-top: .5em;
-           color: #777; font-size: .85em; }
+  body { font-family: "Times New Roman", Times, serif; background: #c0c0c0;
+         max-width: 44em; margin: 1em auto; padding: 0 1em; }
+  .badge { border: 2px outset #808080; background: #ffffcc; padding: 6px 10px;
+           font: 11px "Courier New", Courier, monospace; text-align: center; }
 </style>
 </head>
 <body>
-<h1>about this site</h1>
+<h1 align="center">ABOUT THIS CATALOG</h1>
+<hr>
 
-<p class="badge"><b>&#9642; this page is served by a 98-KB neural network &#9642;</b><br>
-<small>and so is the landing you came from, and the 404 you get when you
-mistype. no file on any disk.</small></p>
+<p class="badge"><b>&#9642; this page is served by a 370-KB neural network &#9642;</b><br>
+<small>and so is the frameset around it, and the nav, and the stylesheet,<br>
+and the ledger the plates are drawn from. no file on any disk.</small></p>
 
-<p>Every machine on <a href="/index.html">the floor</a> is a hand-written
-GGUF: no training, no dataset, just weights placed one tensor at a time until
-a stock inference server does something it was never meant to do. Games,
-a key-value store, a base64 encoder &mdash; and this web server.</p>
+<p>The bubble has burst. The venture capital is gone, the APIs are dark, and
+millions of ollama servers are still humming in basements with nothing to do.
+This catalog is a salvage operation: every machine on the floor is a
+hand-welded GGUF &mdash; no training, no dataset, just weights forged one
+tensor at a time until a stock inference server does something it was never
+meant to do.</p>
 
 <h2>How this particular page reached you</h2>
 
-<p>It was not read from a disk. It was <em>decoded</em>. The whole file
-&mdash; the doctype, the stylesheet above, this sentence, the closing tag
-&mdash; is a single token in the model's vocabulary. Your request was a token
-too: <samp>GET /about.html;</samp> matches one entry, its embedding names one
-state, and the unembedding turns that state into exactly one other token:
-this page. Then end-of-sequence. Two tokens, one page, no arithmetic.</p>
+<p>It was not read from a disk. It was <em>decoded</em>. The whole file &mdash;
+the doctype, the stylesheet above, this sentence, the closing tag &mdash; is a
+single token in the model's vocabulary. Your request was a token too:
+<samp>GET /about.html;</samp> matches one entry, its embedding names one state,
+and the unembedding turns that state into exactly one other token: this page.
+Then end-of-sequence. Two tokens, one page, no arithmetic.</p>
 
-<p>And not just this page: the whole site is in here &mdash; the landing,
-this very about, the 404 &mdash; each one its own token, each one its own
-<samp>GET</samp>. What you are browsing is a picture of a website, drawn from
-memory, correctly, every time.</p>
+<p>And not just this page: the entire catalog is in here. The frameset, the
+banner, the machine plates, the stylesheet, the very ledger of machines the
+plates are drawn from &mdash; each one its own token, each one its own
+<samp>GET</samp>. Even the background tile is in the weights, base64'd into the
+stylesheet, because a token is a UTF-8 string and a PNG is not. What you are
+browsing is a picture of a website, drawn from memory, correctly, every
+time.</p>
 
 <p>Ask for a path that was never compiled in and nothing matches: the request
 crumbles into individual byte tokens, every one of them votes for the same
@@ -53,22 +50,25 @@ exists. It has no files, and no filesystem to check.</p>
 <h2>An honest note on the size</h2>
 
 <p>The badge is not a boast, it is a confession. The site this model serves
-weighs a handful of kilobytes; the model weighs ninety-eight. Everything a real
-web server would keep on disk is kept here in a vocabulary, plus the ballast
-the format demands: 256 byte tokens, a position table we never read, two
-matrices. The compiler prints the exact figure every time it runs, and refuses
-to be coy about it:</p>
+weighs about two hundred kilobytes (the logo lives in here too, in base64); the model weighs three hundred and seventy.
+Everything a real web server would keep on disk is kept here in a vocabulary,
+plus the ballast the format demands: 256 byte tokens, a position table we never
+read, two matrices. The compiler prints the exact figure every time it runs,
+and refuses to be coy about it:</p>
 
-<p style="text-align:center"><samp>compression: 1:11.8, in the wrong direction</samp></p>
+<p align="center"><samp>compression: 1:1.9, in the wrong direction</samp></p>
 
-<p>The ballast is fixed and the transcription is not, so the more pages you
-put in, the closer that number creeps to 1:1 &mdash; from above, always, and
-it never gets there. This machine does not compress. It transcribes, and then
-pays to carry what it transcribed.</p>
+<p>That number is the product, and watch which way it moves: when this model
+held only two pages it was 1:14, and the whole catalog, logo included, brought it to 1:1.9. The
+ballast is fixed and the transcription is not, so the more you put in, the
+closer it creeps to 1:1 &mdash; from above, always, and it never gets there.
+This machine does not compress. It transcribes, and then pays to carry what it
+transcribed.</p>
 
+<hr>
 <footer>
-  <p><em>afterthebubble.ai was more than 100&euro;/year, I'm ok wasting my
-  time, a little bit less so with my money.</em></p>
+  <p align="center"><small><em>afterthebubble.ai was more than 100&euro;/year, I'm ok
+  wasting my time, a little bit less so with my money.</em></small></p>
 </footer>
 </body>
 </html>

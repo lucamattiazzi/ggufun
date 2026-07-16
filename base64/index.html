@@ -7,36 +7,57 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
+  :root { --bg: #fff; --fg: #222; --muted: #777; --link: #00e; }
+  :root.dark { --bg: #16161a; --fg: #d6d6d6; --muted: #969696; --link: #9db8ff; }
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light) { --bg: #16161a; --fg: #d6d6d6; --muted: #969696; --link: #9db8ff; }
+  }
   html { max-width: 70ch; padding: 1em; margin: auto; line-height: 1.6;
-         font-family: sarabun, system-ui, sans-serif; }
-  body { color: #222; }
-  a { color: #00e; text-decoration: none; }
-  header { border-bottom: 1px solid #222; display: flex;
+         font-family: sarabun, system-ui, sans-serif; background: var(--bg); }
+  body { color: var(--fg); }
+  a { color: var(--link); text-decoration: none; }
+  header { border-bottom: 1px solid var(--fg); display: flex;
            justify-content: space-between; align-items: flex-end; }
   header h1 { margin: 0 0 .2em; font-size: 1.3em; }
-  header a { color: #222; font-size: .85em; margin-bottom: .5em; }
+  header a { color: var(--fg); font-size: .85em; margin-bottom: .5em; }
   textarea, #out { font-family: monospace; font-size: .8em; line-height: 1.5;
-                   width: 100%; box-sizing: border-box; border: 1px solid #222;
-                   border-radius: 6px; padding: .4em .6em; }
+                   width: 100%; box-sizing: border-box; border: 1px solid var(--fg);
+                   border-radius: 6px; padding: .4em .6em;
+                   background: var(--bg); color: var(--fg); }
   #out { display: block; min-height: 4.5em; white-space: pre-wrap;
          word-break: break-all; }
-  #log { font-family: monospace; font-size: .7em; line-height: 1.4; color: #777;
-         white-space: pre-wrap; word-break: break-all; max-height: 100px;
-         overflow-y: auto; margin-top: 1em; }
-  button { font: inherit; font-size: .85em; color: #00e; background: none;
-           border: 1px solid #222; border-radius: 6px; padding: .1em .8em;
+  #wire { margin-top: 2em; border-top: 1px solid var(--fg); padding-top: .5em;
+          color: var(--muted); font-size: .85em; }
+  #wire summary { cursor: pointer; }
+  #wire-log { font-family: monospace; font-size: .8em; line-height: 1.5;
+              white-space: pre-wrap; word-break: break-all;
+              max-height: 45vh; overflow-y: auto; margin: .5em 0 0; }
+  button { font: inherit; font-size: .85em; color: var(--link); background: none;
+           border: 1px solid var(--fg); border-radius: 6px; padding: .1em .8em;
            cursor: pointer; }
-  dialog { border: 1px solid #222; border-radius: 6px; max-width: 34rem;
-           padding: 1em 1.5em; line-height: 1.6; color: #222; }
+  dialog { border: 1px solid var(--fg); border-radius: 6px; max-width: 34rem;
+           padding: 1em 1.5em; line-height: 1.6; color: var(--fg);
+           background: var(--bg); }
   dialog::backdrop { background: rgba(0, 0, 0, .4); }
   dialog button { display: block; margin-left: auto; }
   dialog code { font-size: .85em; }
 </style>
+<script>
+  if (localStorage.theme) document.documentElement.className = localStorage.theme;
+  function flipTheme() {
+    const dark = document.documentElement.className === "dark" ||
+      (!document.documentElement.className &&
+       matchMedia("(prefers-color-scheme: dark)").matches);
+    localStorage.theme = dark ? "light" : "dark";
+    document.documentElement.className = localStorage.theme;
+  }
+</script>
 </head>
 <body>
 <header>
   <h1>base64</h1>
-  <nav><a href="../">home</a> · <button id="info-btn">info</button></nav>
+  <nav><a href="../">home</a> · <button id="info-btn">info</button> ·
+       <button onclick="flipTheme()" title="light/dark" aria-label="toggle dark mode">&#9681;</button></nav>
 </header>
 
 <p>text in, base64 out &middot; <b id="meta">0 bytes</b> &middot;
@@ -55,7 +76,11 @@
 
 <p><small>every character above was emitted by ollama, one token at a time.
    the page sends bytes and concatenates tokens &mdash; it never encodes anything</small></p>
-<pre id="log"></pre>
+
+<details id="wire">
+  <summary>server log — <b id="wire-n">0</b> messages</summary>
+  <pre id="wire-log"></pre>
+</details>
 
 <dialog id="info">
   <h2>A base64 encoder in the weights</h2>
@@ -99,6 +124,7 @@ let busy = false;
 // ---- one call: up to CHUNK bytes -> their base64, computed by the model ---------
 async function encodeChunk(bytes) {
   const prompt = "E" + [...bytes].map(HEX).join("") + ";";
+  wire(">", prompt);
   const r = await fetch(`${OLLAMA}/api/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -109,6 +135,7 @@ async function encodeChunk(bytes) {
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const text = (await r.json()).response;
+  wire("<", text);
   // il modello sa quanti caratteri servono: se ne tornano meno, a tagliarli e'
   // stato il runtime, e mostrare il troncamento e' meglio che mostrare un
   // base64 sbagliato senza dirlo
@@ -137,8 +164,7 @@ async function encodeAll() {
   const dt = Math.round(performance.now() - t0);
   document.getElementById("out").textContent = out;
   const calls = Math.ceil(bytes.length / CHUNK);
-  log(`${bytes.length} bytes -> ${out.length} chars in ${calls} call(s), ${dt} ms`);
-  setStatus("");
+  setStatus(`${bytes.length} bytes -> ${out.length} chars in ${calls} call(s), ${dt} ms`);
   busy = false;
 }
 
@@ -163,9 +189,13 @@ document.getElementById("zeros").onclick = () => {
 
 // ---- utils ----------------------------------------------------------------------
 function setStatus(s) { document.getElementById("status").textContent = s; }
-function log(s) {
-  const el = document.getElementById("log");
-  el.textContent = (s + "\n" + el.textContent).slice(0, 3000);
+// il registro di bordo: l'intera conversazione col server, un rigo a messaggio
+let wireN = 0;
+function wire(dir, s) {
+  const el = document.getElementById("wire-log");
+  el.textContent += `${dir} ${s}\n`;
+  document.getElementById("wire-n").textContent = ++wireN;
+  el.scrollTop = el.scrollHeight;
 }
 
 syncMeta();
