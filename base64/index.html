@@ -2,26 +2,44 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>base64 on ollama+GGUF</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
-  /* 1996: browser defaults do the styling; CSS only where HTML cannot go */
-  body { font-family: "Times New Roman", Times, serif; background: #c0c0c0; text-align: center; }
-  h1 { font-size: 20px; }
-  textarea, #out { font: 12px/1.5 "Courier New", Courier, monospace; width: 92%; max-width: 560px;
-                   box-sizing: border-box; }
-  #out { display: block; margin: 0 auto; min-height: 4.5em; background: #ffffff;
-         border: 1px inset #808080; padding: 4px 6px; text-align: left;
-         white-space: pre-wrap; word-break: break-all; }
-  #log { font: 11px/1.4 "Courier New", Courier, monospace; text-align: left; white-space: pre-wrap;
-         word-break: break-all; max-width: 640px; max-height: 100px; overflow-y: auto;
-         margin: 12px auto; background: #ffffff; border: 1px inset #808080; padding: 4px 6px; }
+  html { max-width: 70ch; padding: 1em; margin: auto; line-height: 1.6;
+         font-family: sarabun, system-ui, sans-serif; }
+  body { color: #222; }
+  a { color: #00e; text-decoration: none; }
+  header { border-bottom: 1px solid #222; display: flex;
+           justify-content: space-between; align-items: flex-end; }
+  header h1 { margin: 0 0 .2em; font-size: 1.3em; }
+  header a { color: #222; font-size: .85em; margin-bottom: .5em; }
+  textarea, #out { font-family: monospace; font-size: .8em; line-height: 1.5;
+                   width: 100%; box-sizing: border-box; border: 1px solid #222;
+                   border-radius: 6px; padding: .4em .6em; }
+  #out { display: block; min-height: 4.5em; white-space: pre-wrap;
+         word-break: break-all; }
+  #log { font-family: monospace; font-size: .7em; line-height: 1.4; color: #777;
+         white-space: pre-wrap; word-break: break-all; max-height: 100px;
+         overflow-y: auto; margin-top: 1em; }
+  button { font: inherit; font-size: .85em; color: #00e; background: none;
+           border: 1px solid #222; border-radius: 6px; padding: .1em .8em;
+           cursor: pointer; }
+  dialog { border: 1px solid #222; border-radius: 6px; max-width: 34rem;
+           padding: 1em 1.5em; line-height: 1.6; color: #222; }
+  dialog::backdrop { background: rgba(0, 0, 0, .4); }
+  dialog button { display: block; margin-left: auto; }
+  dialog code { font-size: .85em; }
 </style>
 </head>
 <body>
-<h1>base64</h1>
-<p>text in, base64 out &middot; <b id="meta">0 bytes</b><br>
+<header>
+  <h1>base64</h1>
+  <nav><a href="../">home</a> · <button id="info-btn">info</button></nav>
+</header>
+
+<p>text in, base64 out &middot; <b id="meta">0 bytes</b> &middot;
    <output id="status"></output></p>
 
 <p><label for="src">plain text</label><br>
@@ -39,7 +57,30 @@
    the page sends bytes and concatenates tokens &mdash; it never encodes anything</small></p>
 <pre id="log"></pre>
 
+<dialog id="info">
+  <h2>A base64 encoder in the weights</h2>
+  <p>An 18&nbsp;MB GGUF that encodes base64, served by a stock ollama. The
+     page sends raw bytes as <code>&lt;B:xx&gt;</code> tokens and reads the
+     characters back — it never encodes anything itself.</p>
+  <p>Two transformer blocks: the first works out <i>where to read</i> — each
+     output character depends on which bytes sit at fixed offsets from the
+     end marker — and the second reads them and applies the base64 rules
+     (6-bit slicing and padding, one MLP gate per case). No training,
+     every weight constructed, verified byte-for-byte against Python's
+     <code>base64</code> for every input length.</p>
+  <p>Inputs are chunked 21 bytes per call: base64 of a multiple of 3
+     concatenates cleanly, and 21 bytes can emit at most 28 identical
+     characters in a row — just under ollama's anti-loop guard, which cuts
+     generation at ~31 identical tokens (try the <i>24 zero bytes</i>
+     button to see why this matters).</p>
+  <button id="info-close">close</button>
+</dialog>
 
+<script>
+  const dlg = document.getElementById("info");
+  document.getElementById("info-btn").onclick = () => dlg.showModal();
+  document.getElementById("info-close").onclick = () => dlg.close();
+</script>
 
 <script>
 // ---- configuration -----------------------------------------------------------

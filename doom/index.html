@@ -2,31 +2,75 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Doom-like on ollama+GGUF</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
-  /* 1996: browser defaults do the styling; CSS only where HTML cannot go */
-  body { font-family: "Times New Roman", Times, serif; background: #c0c0c0; text-align: center; }
-  h1 { font-size: 20px; }
-  canvas { image-rendering: pixelated; max-width: 92vw; background: #26262e; }
-  #hp { color: #cc0000; letter-spacing: 2px; }
-  #log { font: 11px/1.4 "Courier New", Courier, monospace; text-align: left; white-space: pre-wrap;
-         word-break: break-all; max-width: 640px; max-height: 100px; overflow-y: auto;
-         margin: 12px auto; background: #ffffff; border: 1px inset #808080; padding: 4px 6px; }
+  html { max-width: 70ch; padding: 1em; margin: auto; line-height: 1.6;
+         font-family: sarabun, system-ui, sans-serif; }
+  body { color: #222; }
+  a { color: #00e; text-decoration: none; }
+  header { border-bottom: 1px solid #222; display: flex;
+           justify-content: space-between; align-items: flex-end; }
+  header h1 { margin: 0 0 .2em; font-size: 1.3em; }
+  header a { color: #222; font-size: .85em; margin-bottom: .5em; }
+  canvas { display: block; margin: 1em auto; image-rendering: pixelated;
+           max-width: 100%; background: #26262e; }
+  #hp { color: #c00; letter-spacing: 2px; }
+  #log { font-family: monospace; font-size: .7em; line-height: 1.4; color: #777;
+         white-space: pre-wrap; word-break: break-all; max-height: 100px;
+         overflow-y: auto; margin-top: 1em; }
+  button { font: inherit; font-size: .85em; color: #00e; background: none;
+           border: 1px solid #222; border-radius: 6px; padding: .1em .8em;
+           cursor: pointer; }
+  dialog { border: 1px solid #222; border-radius: 6px; max-width: 34rem;
+           padding: 1em 1.5em; line-height: 1.6; color: #222; }
+  dialog::backdrop { background: rgba(0, 0, 0, .4); }
+  dialog button { display: block; margin-left: auto; }
+  dialog code { font-size: .85em; }
 </style>
 </head>
 <body>
-<h1>Doom-like &mdash; the whole game is a GGUF on ollama</h1>
+<header>
+  <h1>Doom</h1>
+  <nav><a href="../">home</a> · <button id="info-btn">info</button></nav>
+</header>
+
 <p><b id="hp">&hearts;&hearts;&hearts;&hearts;&hearts;</b> &middot;
-   kills: <b id="kills">0</b> &middot; facing: <b id="ang">E</b><br>
+   kills: <b id="kills">0</b> &middot; facing: <b id="ang">E</b> &middot;
    <output id="status">loading initial view&hellip;</output></p>
 <canvas id="cv" width="640" height="400"></canvas>
-<p>arrows: &larr; &rarr; turn, &uarr; &darr; move &mdash; space: fire. The enemy only moves when you do.</p>
-<p><button id="restart" style="display:none">restart</button></p>
+<p>arrows: &larr; &rarr; turn, &uarr; &darr; move &mdash; space: fire.
+   The enemy only moves when you do.
+   <button id="restart" style="display:none">restart</button></p>
 <pre id="log"></pre>
 
+<dialog id="info">
+  <h2>This whole game is one GGUF</h2>
+  <p>A first-person maze with a monster that chases you (real BFS
+     pathfinding, tabulated in the weights), hitscan shooting and hit
+     points — all inside a 294&nbsp;MB GGUF served by a stock ollama. The
+     frontend sends only the pressed key.</p>
+  <p>The state is re-serialized every tick: the prompt carries position,
+     angle, enemy, HP and tick counter, and the model answers with the next
+     state <i>plus the rendered frame</i> (32 raycast wall columns and a
+     sprite token). The joint state space is too big for one lookup table,
+     so the transformer uses its own generated tokens as registers: one
+     tick is a pipeline of small tables (relative position &rarr; line of
+     sight &rarr; hit &rarr; enemy move &rarr; damage &rarr; sprite), each
+     step reading the tokens the previous one just wrote.</p>
+  <p>No training: every weight is constructed, and the generator refuses to
+     write the file unless it replays perfectly against a reference
+     implementation.</p>
+  <button id="info-close">close</button>
+</dialog>
 
+<script>
+  const dlg = document.getElementById("info");
+  document.getElementById("info-btn").onclick = () => dlg.showModal();
+  document.getElementById("info-close").onclick = () => dlg.close();
+</script>
 
 <script>
 // ---- configuration -----------------------------------------------------------

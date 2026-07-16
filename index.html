@@ -2,41 +2,89 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>after the bubble</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ggufun: hand-written GGUFs as state machines</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
-<script defer data-domain="afterthebubble.grokked.it" src="https://check.grokked.it/js/script.js"></script>
+<style>
+  html { max-width: 70ch; padding: 1em; margin: auto; line-height: 1.6;
+         font-family: sarabun, system-ui, sans-serif; }
+  body { color: #222; }
+  a { color: #00e; text-decoration: none; }
+  header { border-bottom: 1px solid #222; display: flex;
+           justify-content: space-between; align-items: flex-end; }
+  header h1 { margin: 0 0 .2em; }
+  header a { color: #222; font-size: .85em; margin-bottom: .6em; }
+  ul.machines { list-style: none; padding: 0; }
+  ul.machines li { display: flex; justify-content: space-between;
+                   align-items: baseline; gap: 1em; padding: .25em 0; }
+  ul.machines span { color: #777; font-size: .85em; white-space: nowrap; }
+  button { font: inherit; font-size: .85em; color: #00e; background: none;
+           border: 1px solid #222; border-radius: 6px; padding: .1em .8em;
+           cursor: pointer; }
+  dialog { border: 1px solid #222; border-radius: 6px; max-width: 34rem;
+           padding: 1em 1.5em; line-height: 1.6; color: #222; }
+  dialog::backdrop { background: rgba(0, 0, 0, .4); }
+  dialog button { display: block; margin-left: auto; }
+  footer { border-top: 1px solid #222; margin-top: 2em; padding-top: .5em;
+           color: #777; font-size: .85em; }
+</style>
+<script defer data-domain="ggufun.grokked.it" src="https://check.grokked.it/js/script.js"></script>
 </head>
-<frameset rows="96,*" border="2" frameborder="1">
-  <frame src="site/banner.html" name="banner" scrolling="no" noresize>
-  <frameset cols="190,*" border="2" frameborder="1">
-    <frame src="site/nav.html" name="nav">
-    <frame src="site/home.html" name="main">
-  </frameset>
-  <noframes>
-  <body>
-    <h1>after the bubble</h1>
-    <p>Your browser does not support frames. I pity you. The catalog is still yours:</p>
-    <ul>
-      <li><a href="site/home.html">the bubble has burst</a></li>
-    </ul>
-    <p>Machines, operational:</p>
-    <ul>
-      <li><a href="site/machine.html?m=snake">snake</a> — <a href="snake/index.html">demo</a></li>
-      <li><a href="site/machine.html?m=wolf">wolf</a> — <a href="wolf/index.html">demo</a></li>
-      <li><a href="site/machine.html?m=doom">doom</a> — <a href="doom/index.html">demo</a></li>
-      <li><a href="site/machine.html?m=life">life</a> — <a href="life/index.html">demo</a></li>
-    </ul>
-    <p>Machines, under construction:</p>
-    <ul>
-      <li><a href="site/machine.html?m=base64">base64</a></li>
-      <li><a href="site/machine.html?m=kv-store">kv-store</a></li>
-      <li><a href="site/machine.html?m=python-vm">python-vm</a></li>
-      <li><a href="site/machine.html?m=fizzbuzz">fizzbuzz</a></li>
-      <li><a href="site/machine.html?m=static-site-hosting">static-site-hosting</a></li>
-    </ul>
-    <p><a href="https://github.com/lucamattiazzi/ggufun">source: github.com/lucamattiazzi/ggufun</a></p>
-  </body>
-  </noframes>
-</frameset>
+<body>
+<header>
+  <h1>ggufun</h1>
+  <a href="https://github.com/lucamattiazzi/ggufun" target="_blank" rel="noopener">GitHub</a>
+</header>
+
+<p>Hand-written GGUFs as state machines: no training, every weight placed
+   by hand. A standard ollama server runs them like any other model.
+   <button id="info-btn">what?</button></p>
+
+<ul class="machines">
+  <li><a href="snake/">Snake — the classic game, food and deaths computed in the weights</a>
+      <span>22 MB</span></li>
+  <li><a href="wolf/">Wolf — a first person raycaster</a>
+      <span>191 MB</span></li>
+  <li><a href="life/">Life — Conway's game of life on a 12×12 torus</a>
+      <span>64 MB</span></li>
+  <li><a href="doom/">Doom — maze, monster, hitscan and hit points</a>
+      <span>294 MB</span></li>
+  <li><a href="kv/">kv — a key-value store whose database is the context</a>
+      <span>321 MB</span></li>
+  <li><a href="base64/">base64 — text in, base64 out, encoded by the weights</a>
+      <span>18 MB</span></li>
+  <li><a href="www/">www — a web server made of weights, serving a mirror of this site</a>
+      <span>&lt;1 MB</span></li>
+</ul>
+
+<dialog id="info">
+  <h2>What is this?</h2>
+  <p>These are machines whose engine is a GGUF file, served by a standard
+     ollama server. The GGUFs have been hand crafted to behave
+     deterministically: the constraint was to build something that can
+     interact with the frontend only through the ollama runtime.</p>
+  <p>Attention heads read the current state from the conversation (ollama
+     is stateless), MLPs implement the rules, and greedy decoding over
+     saturated logits makes the whole system deterministic. It all started
+     from a minuscule GGUF that always returned the same sentence; the only
+     possible future was, of course, Doom on ollama.</p>
+  <p>All the frontend does is send inputs and draw what it receives: the
+     state itself is always computed by the model from the whole
+     conversation. Each page has an <i>info</i> button explaining what its
+     GGUF does.</p>
+  <button id="info-close">close</button>
+</dialog>
+
+<footer>
+  See how it is done
+  <a href="https://github.com/lucamattiazzi/ggufun" target="_blank" rel="noopener">on GitHub</a>.
+</footer>
+
+<script>
+  const dlg = document.getElementById("info");
+  document.getElementById("info-btn").onclick = () => dlg.showModal();
+  document.getElementById("info-close").onclick = () => dlg.close();
+</script>
+</body>
 </html>

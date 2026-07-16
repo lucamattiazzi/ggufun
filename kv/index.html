@@ -7,31 +7,75 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
-  body { font-family: "Times New Roman", Times, serif; background: #c0c0c0; text-align: center; }
-  h1 { font-size: 20px; }
-  #term { font: 13px/1.45 "Courier New", Courier, monospace; text-align: left;
-          white-space: pre-wrap; word-break: break-all;
-          max-width: 640px; height: 320px; overflow-y: auto; margin: 12px auto 0;
-          background: #101408; color: #8aff6a; border: 2px inset #808080; padding: 8px 10px; }
+  html { max-width: 70ch; padding: 1em; margin: auto; line-height: 1.6;
+         font-family: sarabun, system-ui, sans-serif; }
+  body { color: #222; }
+  a { color: #00e; text-decoration: none; }
+  header { border-bottom: 1px solid #222; display: flex;
+           justify-content: space-between; align-items: flex-end; }
+  header h1 { margin: 0 0 .2em; font-size: 1.3em; }
+  header a { color: #222; font-size: .85em; margin-bottom: .5em; }
+  #term { font-family: monospace; font-size: .8em; line-height: 1.45;
+          white-space: pre-wrap; word-break: break-all; height: 320px;
+          overflow-y: auto; margin-top: 1em; background: #101408;
+          color: #8aff6a; border: 1px solid #222; border-radius: 6px 6px 0 0;
+          padding: .6em .8em; }
   #term .op  { color: #d7ffd0; }
   #term .err { color: #ffb36a; }
-  #line { display: flex; max-width: 640px; margin: 0 auto 8px; }
-  #line label { font: 13px/1.9 "Courier New", Courier, monospace; background: #101408;
-                color: #8aff6a; border: 2px inset #808080; border-top: 0; border-right: 0;
-                padding: 0 0 2px 10px; }
-  #cmd { flex: 1; font: 13px/1.9 "Courier New", Courier, monospace; background: #101408;
-         color: #d7ffd0; border: 2px inset #808080; border-top: 0; border-left: 0;
-         outline: none; padding: 0 10px 2px 4px; }
-  p.gauge { margin: 6px 0; }
+  #line { display: flex; margin-bottom: 1em; }
+  #line label, #cmd { font-family: monospace; font-size: .8em; line-height: 2;
+                      background: #101408; border: 1px solid #222; border-top: 0; }
+  #line label { color: #8aff6a; border-right: 0; border-radius: 0 0 0 6px;
+                padding-left: .8em; }
+  #cmd { flex: 1; color: #d7ffd0; border-left: 0; border-radius: 0 0 6px 0;
+         outline: none; padding-right: .8em; }
+  button { font: inherit; font-size: .85em; color: #00e; background: none;
+           border: 1px solid #222; border-radius: 6px; padding: .1em .8em;
+           cursor: pointer; }
+  dialog { border: 1px solid #222; border-radius: 6px; max-width: 34rem;
+           padding: 1em 1.5em; line-height: 1.6; color: #222; }
+  dialog::backdrop { background: rgba(0, 0, 0, .4); }
+  dialog button { display: block; margin-left: auto; }
+  dialog code { font-size: .85em; }
 </style>
 </head>
 <body>
-<h1>kv-store</h1>
-<p class="gauge">tape: <b id="used">0</b>/<b id="cap">53</b> commands &middot;
+<header>
+  <h1>kv-store</h1>
+  <nav><a href="../">home</a> · <button id="info-btn">info</button></nav>
+</header>
+
+<p>tape: <b id="used">0</b>/<b id="cap">53</b> commands &middot;
    <output id="status">connecting the operator's console&hellip;</output></p>
 <div id="term" aria-live="polite"></div>
 <form id="line"><label for="cmd">kv&gt;&nbsp;</label><input id="cmd" autocomplete="off"
   spellcheck="false" autofocus></form>
+
+<dialog id="info">
+  <h2>The database is the context</h2>
+  <p>A key-value store inside a 321&nbsp;MB GGUF served by a stock ollama.
+     There is no state anywhere else: the client keeps appending commands
+     to the log, and on every read the model replays the whole tape —
+     attention finds the most recent write of the key (a recency ramp in
+     the attention scores breaks ties), fetches its value byte by byte,
+     and greedy decoding types it back.</p>
+  <p><code>S key value</code> stores, <code>G key</code> fetches
+     (<code>V value</code> or <code>NF</code>), <code>D key</code> deletes —
+     internally a tombstone: the same write path as <code>S</code> with a
+     reserved value, so a read that lands on it answers <code>NF</code>.
+     Keys are exactly 4 bytes, values exactly 8.</p>
+  <p>Honest nameplate: capacity = one context window (53 commands),
+     durability = none. It is the first multi-block GGUF of the family
+     (gather &rarr; gather &rarr; match), and it is slated to back this
+     site's guestbook and visitor counter, both currently hand-cranked.</p>
+  <button id="info-close">close</button>
+</dialog>
+
+<script>
+  const dlg = document.getElementById("info");
+  document.getElementById("info-btn").onclick = () => dlg.showModal();
+  document.getElementById("info-close").onclick = () => dlg.close();
+</script>
 
 <script>
 // ---- configuration ------------------------------------------------------------
@@ -71,14 +115,12 @@ function gauge() {
 }
 
 const MOTD = [
-  "AFTER-THE-BUBBLE SALVAGE ......... UNIT: kv-store",
-  "one transformer, three blocks, zero training.",
+  "kv-store ... one transformer, three blocks, zero training.",
   "the ledger IS the tape: capacity one context window",
   "(53 commands), durability none.",
   "",
-  "NOTICE FROM THE FLOOR: this unit is slated to back the",
-  "site guestbook and the visitor counter (both currently",
-  "hand-cranked). do not unplug.",
+  "NOTICE: this unit is slated to back the site guestbook",
+  "and the visitor counter (both currently hand-cranked).",
   "",
   "type HELP for the operator's card.",
 ];
