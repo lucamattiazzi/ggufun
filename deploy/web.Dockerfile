@@ -2,7 +2,7 @@ FROM nginx:alpine
 
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 COPY index.html /usr/share/nginx/html/
-COPY badge-notraining.html /usr/share/nginx/html/
+COPY badge-notraining.svg /usr/share/nginx/html/
 COPY favicon.svg favicon.png /usr/share/nginx/html/
 
 # demo pages keep their repo paths, so local and deployed URLs coincide
