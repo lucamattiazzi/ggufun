@@ -1,249 +1,391 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Snake on ollama+GGUF</title>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
-<style>
-  :root { --bg: #fff; --fg: #222; --muted: #777; --link: #00e; }
-  :root.dark { --bg: #16161a; --fg: #d6d6d6; --muted: #969696; --link: #9db8ff; }
-  @media (prefers-color-scheme: dark) {
-    :root:not(.light) { --bg: #16161a; --fg: #d6d6d6; --muted: #969696; --link: #9db8ff; }
-  }
-  html { max-width: 70ch; padding: 1em; margin: auto; line-height: 1.6;
-         font-family: sarabun, system-ui, sans-serif; background: var(--bg); }
-  body { color: var(--fg); }
-  a { color: var(--link); text-decoration: none; }
-  header { border-bottom: 1px solid var(--fg); display: flex;
-           justify-content: space-between; align-items: flex-end; }
-  header h1 { margin: 0 0 .2em; font-size: 1.3em; }
-  header nav { font-size: .85em; margin-bottom: .5em; }
-  header nav a { color: var(--fg); }
-  button { font: inherit; font-size: .85em; color: var(--link); background: none;
-           border: 1px solid var(--fg); border-radius: 6px; padding: .1em .8em;
-           cursor: pointer; }
-  dialog { border: 1px solid var(--fg); border-radius: 6px; max-width: 34rem;
-           padding: 1em 1.5em; line-height: 1.6; color: var(--fg);
-           background: var(--bg); }
-  dialog::backdrop { background: rgba(0, 0, 0, .4); }
-  dialog button { display: block; margin-left: auto; }
-  canvas { display: block; margin: 1em auto; image-rendering: pixelated;
-           max-width: min(100%, 360px); height: auto; background: #232327;
-           border-radius: 6px; }
-  .dead { color: #d44; } .ate { color: #4a4; }
-  #wire { margin-top: 2em; border-top: 1px solid var(--fg); padding-top: .5em;
-          color: var(--muted); font-size: .85em; }
-  #wire summary { cursor: pointer; }
-  #wire-log { font-family: monospace; font-size: .8em; line-height: 1.5;
-              white-space: pre-wrap; word-break: break-all;
-              max-height: 45vh; overflow-y: auto; margin: .5em 0 0; }
-  /* touch d-pad: works with mouse too, essential on mobile */
-  #dpad { display: grid; justify-content: center; grid-template-columns: repeat(3, 64px);
-          grid-template-rows: repeat(2, 48px); gap: 8px;
-          user-select: none; -webkit-user-select: none; }
-  #dpad button { font-size: 1.1em; touch-action: manipulation;
-                 -webkit-tap-highlight-color: transparent; }
-  #dpad .up   { grid-column: 2; grid-row: 1; }
-  #dpad .left { grid-column: 1; grid-row: 2; }
-  #dpad .down { grid-column: 2; grid-row: 2; }
-  #dpad .right{ grid-column: 3; grid-row: 2; }
-</style>
-<script>
-  if (localStorage.theme) document.documentElement.className = localStorage.theme;
-  function flipTheme() {
-    const dark = document.documentElement.className === "dark" ||
-      (!document.documentElement.className &&
-       matchMedia("(prefers-color-scheme: dark)").matches);
-    localStorage.theme = dark ? "light" : "dark";
-    document.documentElement.className = localStorage.theme;
-  }
-</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snake on ollama+GGUF</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #222;
+      --muted: #777;
+      --link: #00e;
+    }
+
+    :root.dark {
+      --bg: #16161a;
+      --fg: #d6d6d6;
+      --muted: #969696;
+      --link: #9db8ff;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not(.light) {
+        --bg: #16161a;
+        --fg: #d6d6d6;
+        --muted: #969696;
+        --link: #9db8ff;
+      }
+    }
+
+    html {
+      max-width: 70ch;
+      padding: 1em;
+      margin: auto;
+      line-height: 1.6;
+      font-family: sarabun, system-ui, sans-serif;
+      background: var(--bg);
+    }
+
+    body {
+      color: var(--fg);
+    }
+
+    a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    header {
+      border-bottom: 1px solid var(--fg);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    header h1 {
+      margin: 0 0 .2em;
+      font-size: 1.3em;
+    }
+
+    header nav {
+      font-size: .85em;
+      margin-bottom: .5em;
+    }
+
+    header nav a {
+      color: var(--fg);
+    }
+
+    button {
+      font: inherit;
+      font-size: .85em;
+      color: var(--link);
+      background: none;
+      border: 1px solid var(--fg);
+      border-radius: 6px;
+      padding: .1em .8em;
+      cursor: pointer;
+    }
+
+    dialog {
+      border: 1px solid var(--fg);
+      border-radius: 6px;
+      max-width: 34rem;
+      padding: 1em 1.5em;
+      line-height: 1.6;
+      color: var(--fg);
+      background: var(--bg);
+    }
+
+    dialog::backdrop {
+      background: rgba(0, 0, 0, .4);
+    }
+
+    dialog button {
+      display: block;
+      margin-left: auto;
+    }
+
+    canvas {
+      display: block;
+      margin: 1em auto;
+      image-rendering: pixelated;
+      max-width: min(100%, 360px);
+      height: auto;
+      background: #232327;
+      border-radius: 6px;
+    }
+
+    .dead {
+      color: #d44;
+    }
+
+    .ate {
+      color: #4a4;
+    }
+
+    #wire {
+      margin-top: 2em;
+      border-top: 1px solid var(--fg);
+      padding-top: .5em;
+      color: var(--muted);
+      font-size: .85em;
+    }
+
+    #wire summary {
+      cursor: pointer;
+    }
+
+    #wire-log {
+      font-family: monospace;
+      font-size: .8em;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 45vh;
+      overflow-y: auto;
+      margin: .5em 0 0;
+    }
+
+    /* touch d-pad: works with mouse too, essential on mobile */
+    #dpad {
+      display: grid;
+      justify-content: center;
+      grid-template-columns: repeat(3, 64px);
+      grid-template-rows: repeat(2, 48px);
+      gap: 8px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #dpad button {
+      font-size: 1.1em;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #dpad .up {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    #dpad .left {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    #dpad .down {
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    #dpad .right {
+      grid-column: 3;
+      grid-row: 2;
+    }
+  </style>
+  <script>
+    if (localStorage.theme) document.documentElement.className = localStorage.theme
+    function flipTheme() {
+      const dark = document.documentElement.className === "dark" ||
+        (!document.documentElement.className &&
+          matchMedia("(prefers-color-scheme: dark)").matches)
+      localStorage.theme = dark ? "light" : "dark"
+      document.documentElement.className = localStorage.theme
+    }
+  </script>
 </head>
+
 <body>
-<header>
-  <h1>Snake</h1>
-  <nav><a href="../">home</a> · <button id="info-btn">info</button> ·
-       <button onclick="flipTheme()" title="light/dark" aria-label="toggle dark mode">&#9681;</button></nav>
-</header>
+  <header>
+    <h1>Snake</h1>
+    <nav><a href="../">home</a> · <button id="info-btn">info</button><span id="post-link"> ·
+        <a href="https://grokked.it/posts/after_the_bubble/" target="_blank" rel="noopener">technical explanation</a></span> ·
+      <button onclick="flipTheme()" title="light/dark" aria-label="toggle dark mode">&#9681;</button>
+    </nav>
+  </header>
 
-<p>direction: <b id="dir">R</b> &middot; turn: <b id="turn">0</b>/57 &middot;
-   score: <b id="score">0</b> &middot; length: <b id="len">3</b> &middot;
-   <output id="status">press an arrow key or tap a button to start</output></p>
-<canvas id="cv" width="360" height="360"></canvas>
-<p id="dpad">
-  <button class="up"    data-dir="U" aria-label="up">&#9650;</button>
-  <button class="left"  data-dir="L" aria-label="left">&#9664;</button>
-  <button class="down"  data-dir="D" aria-label="down">&#9660;</button>
-  <button class="right" data-dir="R" aria-label="right">&#9654;</button>
-</p>
-<p style="text-align:center"><button id="restart">restart</button></p>
+  <p>direction: <b id="dir">R</b> &middot; turn: <b id="turn">0</b>/57 &middot;
+    score: <b id="score">0</b> &middot; length: <b id="len">3</b> &middot;
+    <output id="status">press an arrow key or tap a button to start</output>
+  </p>
+  <canvas id="cv" width="360" height="360"></canvas>
+  <p id="dpad">
+    <button class="up" data-dir="U" aria-label="up">&#9650;</button>
+    <button class="left" data-dir="L" aria-label="left">&#9664;</button>
+    <button class="down" data-dir="D" aria-label="down">&#9660;</button>
+    <button class="right" data-dir="R" aria-label="right">&#9654;</button>
+  </p>
+  <p style="text-align:center"><button id="restart">restart</button></p>
 
-<details id="wire">
-  <summary>server log — <b id="wire-n">0</b> messages</summary>
-  <pre id="wire-log"></pre>
-</details>
+  <details id="wire">
+    <summary>server log — <b id="wire-n">0</b> messages</summary>
+    <pre id="wire-log"></pre>
+  </details>
 
-<dialog id="info">
-  <h2>What is this?</h2>
-  <p>This is a snake game, running on an ollama server that serves a custom
-     .gguf file. This .gguf file is not a model, it has not been built via
-     training: it has been handcrafted to receive inputs from the user (as
-     tokens) and answer with the new position of the snake head and the
-     current state.</p>
-  <p>Every 700ms the frontend sends the server its input, as always with the
-     whole game history: the server has no state, and no idea of where the
-     snake is. It computes it from all the inputs it receives — not with some
-     stochastic learned method, but with good old deterministic
-     computations.</p>
-  <p>Attention heads read the tape at fixed offsets to extract the latest
-     move and the food position; the MLP computes the transition
-     cell&nbsp;+&nbsp;move&nbsp;&rarr;&nbsp;new cell, and checks for food and
-     collisions.</p>
-  <button id="info-close">close</button>
-</dialog>
+  <dialog id="info">
+    <h2>What is this?</h2>
+    <p>This is a snake game, running on an ollama server that serves a custom
+      .gguf file. This .gguf file is not a model, it has not been built via
+      training: it has been handcrafted to receive inputs from the user (as
+      tokens) and answer with the new position of the snake head and the
+      current state.</p>
+    <p>Every 700ms the frontend sends the server its input, as always with the
+      whole game history: the server has no state, and no idea of where the
+      snake is. It computes it from all the inputs it receives — not with some
+      stochastic learned method, but with good old deterministic
+      computations.</p>
+    <p>Attention heads read the tape at fixed offsets to extract the latest
+      move and the food position; the MLP computes the transition
+      cell&nbsp;+&nbsp;move&nbsp;&rarr;&nbsp;new cell, and checks for food and
+      collisions.</p>
+    <button id="info-close">close</button>
+  </dialog>
 
-<script>
-  const dlg = document.getElementById("info");
-  document.getElementById("info-btn").onclick = () => dlg.showModal();
-  document.getElementById("info-close").onclick = () => dlg.close();
-</script>
+  <script>
+    const dlg = document.getElementById("info")
+    document.getElementById("info-btn").onclick = () => dlg.showModal()
+    document.getElementById("info-close").onclick = () => dlg.close()
+    // il link "technical explanations": l'href vive nel manifesto,
+    // il link compare solo quando il post esiste
+    fetch("/www/oldsite/machines.json").then(r => r.json()).then(({ machines }) => {
+      const url = machines.find(m => m.name === "snake")?.links?.technical_post
+      if (!url) return
+      const span = document.getElementById("post-link")
+      span.querySelector("a").href = url
+      span.hidden = false
+    }).catch(() => { });
+  </script>
 
-<script>
-// ---- configuration ------------------------------------------------------------
-const OLLAMA = "";   // ollama server
-const MODEL  = "snake";                    // name given with `ollama create`
-const TICK_MS = 700;                       // game tick period
-const G = 6, MAXTURNS = 57, LMAX = 8;
-const START_SEG = 13, START_HEAD = 7;      // cid(1,2), cid(1,1)
+  <script>
+    // ---- configuration ------------------------------------------------------------
+    const OLLAMA = ""   // ollama server
+    const MODEL = "snake"                    // name given with `ollama create`
+    const TICK_MS = 700                       // game tick period
+    const G = 6, MAXTURNS = 57, LMAX = 8
+    const START_SEG = 13, START_HEAD = 7      // cid(1,2), cid(1,1)
 
-// ---- frontend state: ONLY a mirror for rendering --------------------------------
-// food and length are the MODEL's authority: they come from the <F:c,l> tokens
-let transcript, snake, len, food, dir, turn, score, over, waiting;
+    // ---- frontend state: ONLY a mirror for rendering --------------------------------
+    // food and length are the MODEL's authority: they come from the <F:c,l> tokens
+    let transcript, snake, len, food, dir, turn, score, over, waiting
 
-function reset() {
-  dir = "R"; turn = 0; score = 0; len = 3; over = false; waiting = false;
-  snake = [START_SEG, START_HEAD];          // [oldest, ..., head]
-  // the seed of the game: the only randomness is the initial food in the prefix
-  const f0cands = [];
-  for (let c = 0; c < G*G; c++) if (c !== START_SEG && c !== START_HEAD) f0cands.push(c);
-  food = f0cands[Math.floor(Math.random() * f0cands.length)];
-  transcript = `<NOOP><P:${START_SEG}><OK><F:${food},3>` +
-               `<NOOP><P:${START_HEAD}><OK><F:${food},3>`;
-  document.getElementById("turn").textContent = 0;
-  document.getElementById("score").textContent = 0;
-  document.getElementById("len").textContent = 3;
-  setStatus("press an arrow key or tap a button to start");
-  draw();
-}
+    function reset() {
+      dir = "R"; turn = 0; score = 0; len = 3; over = false; waiting = false
+      snake = [START_SEG, START_HEAD]          // [oldest, ..., head]
+      // the seed of the game: the only randomness is the initial food in the prefix
+      const f0cands = []
+      for (let c = 0; c < G * G; c++) if (c !== START_SEG && c !== START_HEAD) f0cands.push(c)
+      food = f0cands[Math.floor(Math.random() * f0cands.length)]
+      transcript = `<NOOP><P:${START_SEG}><OK><F:${food},3>` +
+        `<NOOP><P:${START_HEAD}><OK><F:${food},3>`
+      document.getElementById("turn").textContent = 0
+      document.getElementById("score").textContent = 0
+      document.getElementById("len").textContent = 3
+      setStatus("press an arrow key or tap a button to start")
+      draw()
+    }
 
-// ---- model call: 1 turn = 3 generated tokens -------------------------------------
-async function tick() {
-  if (over || waiting) return;
-  if (turn >= MAXTURNS) { gameOver("context exhausted (turn limit)"); return; }
-  waiting = true;
-  const input = `<M:${dir}>`;              // EVERYTHING the frontend provides
-  const prompt = transcript + input;
-  wire(">", prompt);
-  let text;
-  try {
-    const r = await fetch(`${OLLAMA}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: MODEL, prompt, raw: true, stream: false,
-        options: { temperature: 0, num_predict: 3, repeat_penalty: 1.0 }
-      })
-    });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    text = (await r.json()).response;
-  } catch (e) {
-    setStatus(`ollama error: ${e.message} (OLLAMA_ORIGINS? model created?)`);
-    waiting = false; return;
-  }
-  wire("<", text);
-  step(input, text);
-}
+    // ---- model call: 1 turn = 3 generated tokens -------------------------------------
+    async function tick() {
+      if (over || waiting) return
+      if (turn >= MAXTURNS) { gameOver("context exhausted (turn limit)"); return }
+      waiting = true
+      const input = `<M:${dir}>`              // EVERYTHING the frontend provides
+      const prompt = transcript + input
+      wire(">", prompt)
+      let text
+      try {
+        const r = await fetch(`${OLLAMA}/api/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: MODEL, prompt, raw: true, stream: false,
+            options: { temperature: 0, num_predict: 3, repeat_penalty: 1.0 }
+          })
+        })
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        text = (await r.json()).response
+      } catch (e) {
+        setStatus(`ollama error: ${e.message} (OLLAMA_ORIGINS? model created?)`)
+        waiting = false; return
+      }
+      wire("<", text)
+      step(input, text)
+    }
 
-// ---- advance one turn --------------------------------------------------------------
-function step(input, text) {
-  const mPos = text.match(/<P:(\d+)>/);
-  const mSt  = text.match(/<(OK|ATE|DEAD)>/);
-  const mF   = text.match(/<F:(\d+),(\d+)>/);
-  if (!mPos || !mSt || !mF) { gameOver(`unexpected output: ${JSON.stringify(text)}`); return; }
-  const newHead = parseInt(mPos[1], 10), st = mSt[1];
+    // ---- advance one turn --------------------------------------------------------------
+    function step(input, text) {
+      const mPos = text.match(/<P:(\d+)>/)
+      const mSt = text.match(/<(OK|ATE|DEAD)>/)
+      const mF = text.match(/<F:(\d+),(\d+)>/)
+      if (!mPos || !mSt || !mF) { gameOver(`unexpected output: ${JSON.stringify(text)}`); return }
+      const newHead = parseInt(mPos[1], 10), st = mSt[1]
 
-  transcript += input + `<P:${newHead}><${st}><F:${mF[1]},${mF[2]}>`;
-  turn++; document.getElementById("turn").textContent = turn;
+      transcript += input + `<P:${newHead}><${st}><F:${mF[1]},${mF[2]}>`
+      turn++; document.getElementById("turn").textContent = turn
 
-  if (st === "DEAD") { snake.push(newHead); draw(); gameOver("DEAD — collision"); return; }
-  snake.push(newHead);
-  // food and length: read from the <F:c,l> token generated by the model
-  food = parseInt(mF[1], 10);
-  len  = parseInt(mF[2], 10);
-  document.getElementById("len").textContent = len;
-  if (st === "ATE") {
-    score++; document.getElementById("score").textContent = score;
-    flashStatus(len === LMAX ? "ATE! (max length)" : "ATE!", "ate");
-  }
-  while (snake.length > len) snake.shift();
-  draw(); waiting = false;
-}
+      if (st === "DEAD") { snake.push(newHead); draw(); gameOver("DEAD — collision"); return }
+      snake.push(newHead)
+      // food and length: read from the <F:c,l> token generated by the model
+      food = parseInt(mF[1], 10)
+      len = parseInt(mF[2], 10)
+      document.getElementById("len").textContent = len
+      if (st === "ATE") {
+        score++; document.getElementById("score").textContent = score
+        flashStatus(len === LMAX ? "ATE! (max length)" : "ATE!", "ate")
+      }
+      while (snake.length > len) snake.shift()
+      draw(); waiting = false
+    }
 
-// ---- rendering ---------------------------------------------------------------
-const cv = document.getElementById("cv"), cx = cv.getContext("2d"), CS = 60;
-function draw() {
-  cx.fillStyle = "#232327"; cx.fillRect(0, 0, cv.width, cv.height);
-  cx.strokeStyle = "#333";
-  for (let i = 1; i < G; i++) {
-    cx.beginPath(); cx.moveTo(i*CS, 0); cx.lineTo(i*CS, cv.height); cx.stroke();
-    cx.beginPath(); cx.moveTo(0, i*CS); cx.lineTo(cv.width, i*CS); cx.stroke();
-  }
-  const cell = (c, color, pad) => {
-    const x = (c % G) * CS, y = Math.floor(c / G) * CS;
-    cx.fillStyle = color; cx.fillRect(x+pad, y+pad, CS-2*pad, CS-2*pad);
-  };
-  cell(food, "#e06c75", 19);   // if the food is under the body, it stays covered
-  snake.forEach((c, i) => cell(c, i === snake.length-1 ? "#98c379" : "#5c8a4a", 6));
-}
+    // ---- rendering ---------------------------------------------------------------
+    const cv = document.getElementById("cv"), cx = cv.getContext("2d"), CS = 60
+    function draw() {
+      cx.fillStyle = "#232327"; cx.fillRect(0, 0, cv.width, cv.height)
+      cx.strokeStyle = "#333"
+      for (let i = 1; i < G; i++) {
+        cx.beginPath(); cx.moveTo(i * CS, 0); cx.lineTo(i * CS, cv.height); cx.stroke()
+        cx.beginPath(); cx.moveTo(0, i * CS); cx.lineTo(cv.width, i * CS); cx.stroke()
+      }
+      const cell = (c, color, pad) => {
+        const x = (c % G) * CS, y = Math.floor(c / G) * CS
+        cx.fillStyle = color; cx.fillRect(x + pad, y + pad, CS - 2 * pad, CS - 2 * pad)
+      }
+      cell(food, "#e06c75", 19)   // if the food is under the body, it stays covered
+      snake.forEach((c, i) => cell(c, i === snake.length - 1 ? "#98c379" : "#5c8a4a", 6))
+    }
 
-// ---- input & loop --------------------------------------------------------------
-const KEY = { ArrowLeft: "L", ArrowRight: "R", ArrowUp: "U", ArrowDown: "D" };
-let started = false;
-function setDir(d) {
-  if (over) return;
-  dir = d;
-  document.getElementById("dir").textContent = dir;
-  if (!started) { started = true; setStatus("playing"); }
-}
-document.addEventListener("keydown", e => {
-  if (!(e.key in KEY)) return;
-  e.preventDefault();
-  setDir(KEY[e.key]);
-});
-// d-pad: pointerdown (not click) for instant response on touch screens
-document.querySelectorAll("#dpad button").forEach(b => {
-  b.addEventListener("pointerdown", e => { e.preventDefault(); setDir(b.dataset.dir); });
-});
-setInterval(() => { if (started) tick(); }, TICK_MS);
-document.getElementById("restart").onclick = () => { started = false; reset(); };
+    // ---- input & loop --------------------------------------------------------------
+    const KEY = { ArrowLeft: "L", ArrowRight: "R", ArrowUp: "U", ArrowDown: "D" }
+    let started = false
+    function setDir(d) {
+      if (over) return
+      dir = d
+      document.getElementById("dir").textContent = dir
+      if (!started) { started = true; setStatus("playing") }
+    }
+    document.addEventListener("keydown", e => {
+      if (!(e.key in KEY)) return
+      e.preventDefault()
+      setDir(KEY[e.key])
+    })
+    // d-pad: pointerdown (not click) for instant response on touch screens
+    document.querySelectorAll("#dpad button").forEach(b => {
+      b.addEventListener("pointerdown", e => { e.preventDefault(); setDir(b.dataset.dir) })
+    })
+    setInterval(() => { if (started) tick() }, TICK_MS)
+    document.getElementById("restart").onclick = () => { started = false; reset() }
 
-function setStatus(s, cls) {
-  const el = document.getElementById("status");
-  el.textContent = s; el.className = cls || "";
-}
-function flashStatus(s, cls) { setStatus(s, cls); setTimeout(() => setStatus("playing"), 900); }
-function gameOver(why) { over = true; waiting = false; setStatus(`game over: ${why}`, "dead"); }
-// il registro di bordo: l'intera conversazione col server, un rigo a messaggio
-let wireN = 0;
-function wire(dir, s) {
-  const el = document.getElementById("wire-log");
-  el.textContent += `${dir} ${s}\n`;
-  document.getElementById("wire-n").textContent = ++wireN;
-  el.scrollTop = el.scrollHeight;
-}
-reset();
-</script>
+    function setStatus(s, cls) {
+      const el = document.getElementById("status")
+      el.textContent = s; el.className = cls || ""
+    }
+    function flashStatus(s, cls) { setStatus(s, cls); setTimeout(() => setStatus("playing"), 900) }
+    function gameOver(why) { over = true; waiting = false; setStatus(`game over: ${why}`, "dead") }
+    // il registro di bordo: l'intera conversazione col server, un rigo a messaggio
+    let wireN = 0
+    function wire(dir, s) {
+      const el = document.getElementById("wire-log")
+      el.textContent += `${dir} ${s}\n`
+      document.getElementById("wire-n").textContent = ++wireN
+      el.scrollTop = el.scrollHeight
+    }
+    reset();
+  </script>
 </body>
+
 </html>

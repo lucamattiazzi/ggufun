@@ -3,6 +3,17 @@ revision = 3
 requires-python = ">=3.12"
 
 [[package]]
+name = "after-the-bubble"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "gguf" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "gguf", specifier = ">=0.19.0" }]
+
+[[package]]
 name = "certifi"
 version = "2026.6.17"
 source = { registry = "https://pypi.org/simple" }
@@ -95,17 +106,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/48/ae/17f1308ae45cd7b08
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/bb/d71d6da82763528c2c2ed6b59a9d6142c6595545a4c448e2085d155e88c2/gguf-0.19.0-py3-none-any.whl", hash = "sha256:70bcd10edfe697fb2dad6e40af2234b9d8ece9a41a99761405121ebda1c3c1cd", size = 118475, upload-time = "2026-05-06T13:04:02.588Z" },
 ]
-
-[[package]]
-name = "after the bubble"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "gguf" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "gguf", specifier = ">=0.19.0" }]
 
 [[package]]
 name = "idna"

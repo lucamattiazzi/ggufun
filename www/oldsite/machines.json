@@ -15,7 +15,8 @@
       "links": {
         "demo": "snake/index.html",
         "gguf_download": "https://TODO-S3-BUCKET/snake.gguf",
-        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/snake/build_gguf.py"
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/snake/build_gguf.py",
+        "technical_post": ""
       }
     },
     {
@@ -32,7 +33,8 @@
       "links": {
         "demo": "wolf/index.html",
         "gguf_download": "https://TODO-S3-BUCKET/wolf.gguf",
-        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/wolf/build_gguf.py"
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/wolf/build_gguf.py",
+        "technical_post": ""
       }
     },
     {
@@ -50,7 +52,8 @@
       "links": {
         "demo": "doom/index.html",
         "gguf_download": "https://TODO-S3-BUCKET/doom.gguf",
-        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/doom/build_gguf.py"
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/doom/build_gguf.py",
+        "technical_post": ""
       }
     },
     {
@@ -67,7 +70,8 @@
       "links": {
         "demo": "life/index.html",
         "gguf_download": "https://TODO-S3-BUCKET/life.gguf",
-        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/life/build_gguf.py"
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/life/build_gguf.py",
+        "technical_post": ""
       }
     },
     {
@@ -86,7 +90,8 @@
       "links": {
         "demo": "base64/index.html",
         "gguf_download": "https://TODO-S3-BUCKET/base64.gguf",
-        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/base64/build_gguf.py"
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/base64/build_gguf.py",
+        "technical_post": ""
       }
     },
     {
@@ -99,26 +104,35 @@
       "links": {
         "demo": "kv/index.html",
         "gguf_download": "https://TODO-S3-BUCKET/kv.gguf",
-        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/kv/build_gguf.py"
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/kv/build_gguf.py",
+        "technical_post": ""
       }
     },
     {
       "name": "python-vm",
       "type": "infrastructure",
-      "gguf_size": "TBD",
-      "clock": "TBD",
-      "status": "under_construction",
-      "blurb": "A small Python virtual machine. Every generated token is one machine cycle: the scratchpad is the RAM, the unembedder is the instruction decoder.",
-      "links": {}
+      "gguf_size": "181 MB",
+      "clock": "one cycle every two tokens",
+      "status": "operational",
+      "blurb": "A bytecode stack machine, one interpreter for all programs. The frontend compiles a subset of Python; the tape is an event log and attention is the RAM (no positional selectors, so a 4096-token context). Every generated token is half a machine cycle.",
+      "links": {
+        "demo": "pythonvm/index.html",
+        "gguf_download": "https://TODO-S3-BUCKET/pythonvm.gguf",
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/pythonvm/build_gguf.py",
+        "technical_post": ""
+      }
     },
     {
       "name": "fizzbuzz",
       "type": "utility",
-      "gguf_size": "TBD",
-      "clock": "TBD",
-      "status": "under_construction",
-      "blurb": "Prints fizzbuzz to arbitrary N. NOTE FROM THE FLOOR: this workload runs on the python-vm machine — same GGUF, different Modelfile. The factory retools; the furnace stays lit.",
-      "links": {}
+      "gguf_size": "runs on python-vm",
+      "clock": "one cycle every two tokens",
+      "status": "operational",
+      "blurb": "Prints fizzbuzz to arbitrary N. NOTE FROM THE FLOOR: this workload runs on the python-vm machine — same GGUF, the program is just the prompt. The factory retools; the furnace stays lit.",
+      "links": {
+        "demo": "pythonvm/index.html",
+        "technical_post": ""
+      }
     },
     {
       "name": "static-site-hosting",
@@ -141,7 +155,8 @@
       ],
       "links": {
         "demo": "www/index.html",
-        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/www/compile_site.py"
+        "generator_script": "https://github.com/lucamattiazzi/ggufun/blob/main/www/compile_site.py",
+        "technical_post": ""
       }
     }
   ]

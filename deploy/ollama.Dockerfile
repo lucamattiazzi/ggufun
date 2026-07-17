@@ -20,6 +20,9 @@ COPY base64/Modelfile /build/base64.Modelfile
 COPY kv/kv.gguf /build/
 COPY kv/Modelfile /build/kv.Modelfile
 
+COPY pythonvm/pythonvm.gguf /build/
+COPY pythonvm/Modelfile /build/pythonvm.Modelfile
+
 # non e' una macchina, e' l'uscita di un compilatore: questo GGUF E' il sito.
 # Prima del build: `cd www && python make_catalog.py && python compile_site.py
 # afterthebubble` (assembla lo specchio, poi scrive gguf e Modelfile insieme)
@@ -32,8 +35,8 @@ RUN ollama serve & \
     ollama create snake -f snake.Modelfile && \
     ollama create wolf -f wolf.Modelfile && \
     ollama create life -f life.Modelfile && \
-    ollama create doom -f doom.Modelfile && \
     ollama create kv -f kv.Modelfile && \
     ollama create base64 -f base64.Modelfile && \
+    ollama create pythonvm -f pythonvm.Modelfile && \
     ollama create afterthebubble -f afterthebubble.Modelfile && \
     cd / && rm -rf /build

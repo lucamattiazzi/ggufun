@@ -52,7 +52,8 @@
 <body>
 <header>
   <h1>Wolf</h1>
-  <nav><a href="../">home</a> · <button id="info-btn">info</button> ·
+  <nav><a href="../">home</a> · <button id="info-btn">info</button><span id="post-link" hidden> ·
+       <a href="" target="_blank" rel="noopener">technical explanations</a></span> ·
        <button onclick="flipTheme()" title="light/dark" aria-label="toggle dark mode">&#9681;</button></nav>
 </header>
 
@@ -83,6 +84,15 @@
   const dlg = document.getElementById("info");
   document.getElementById("info-btn").onclick = () => dlg.showModal();
   document.getElementById("info-close").onclick = () => dlg.close();
+  // il link "technical explanations": l'href vive nel manifesto,
+  // il link compare solo quando il post esiste
+  fetch("/www/oldsite/machines.json").then(r => r.json()).then(({ machines }) => {
+    const url = machines.find(m => m.name === "wolf")?.links?.technical_post;
+    if (!url) return;
+    const span = document.getElementById("post-link");
+    span.querySelector("a").href = url;
+    span.hidden = false;
+  }).catch(() => {});
 </script>
 
 <script>
