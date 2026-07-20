@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>kv-store on ollama+GGUF</title>
+<title>kv-store in a transformer</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
@@ -83,7 +83,7 @@
 
 <dialog id="info">
   <h2>The database is the context</h2>
-  <p>A key-value store inside a 321&nbsp;MB GGUF served by a stock ollama.
+  <p>A key-value store inside a 321&nbsp;MB transformer served by a stock ollama.
      There is no state anywhere else: the client keeps appending commands
      to the log, and on every read the model replays the whole tape —
      attention finds the most recent write of the key (a recency ramp in
@@ -97,7 +97,7 @@
      fixed widths. Shorter input is padded with dots by the console (and it
      tells you): <code>ab</code> and <code>ab..</code> are the same key.</p>
   <p>Honest nameplate: capacity = one context window (53 commands),
-     durability = none. It is the first multi-block GGUF of the family
+     durability = none. It is the first multi-block transformer of the family
      (gather &rarr; gather &rarr; match), and it is slated to back this
      site's guestbook and visitor counter, both currently hand-cranked.</p>
   <button id="info-close">close</button>

@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Snake on ollama+GGUF</title>
+  <title>Snake in a transformer</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
   <style>
@@ -220,10 +220,10 @@
   <dialog id="info">
     <h2>What is this?</h2>
     <p>This is a snake game, running on an ollama server that serves a custom
-      .gguf file. This .gguf file is not a model, it has not been built via
-      training: it has been handcrafted to receive inputs from the user (as
-      tokens) and answer with the new position of the snake head and the
-      current state.</p>
+      transformer, packaged as a .gguf file. That transformer is not a model,
+      it has not been built via training: it has been handcrafted to receive
+      inputs from the user (as tokens) and answer with the new position of the
+      snake head and the current state.</p>
     <p>Every 700ms the frontend sends the server its input, as always with the
       whole game history: the server has no state, and no idea of where the
       snake is. It computes it from all the inputs it receives — not with some

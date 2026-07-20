@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>static site hosting on ollama+GGUF</title>
+<title>static site hosting in a transformer</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
@@ -91,7 +91,7 @@
 
 <dialog id="info">
   <h2>A web server made of weights</h2>
-  <p>This GGUF <i>is</i> a website. <code>compile_site.py</code> welds a
+  <p>This transformer <i>is</i> a website. <code>compile_site.py</code> welds a
      whole static site into the weights — every page becomes one token —
      and a stock ollama serves it: <code>GET /page.html</code> as the
      prompt, the page as the completion. The model in the demo carries the

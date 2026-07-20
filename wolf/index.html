@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wolf on ollama+GGUF</title>
+<title>Wolf in a transformer</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
@@ -69,10 +69,10 @@
 
 <dialog id="info">
   <h2>What is this?</h2>
-  <p>This is a basic first person raycaster game whose engine is completely
-     built in a GGUF file run by a standard ollama server. The GGUF was not
-     obtained by training, but hand crafted (I mean, figuratively) to handle
-     the game.</p>
+  <p>This is a basic first person raycaster game whose engine is a transformer,
+     built completely by hand and run — as a GGUF file — by a standard ollama
+     server. That transformer was not obtained by training, but hand crafted
+     (I mean, figuratively) to handle the game.</p>
   <p>Every keypress the frontend sends a command to the server, and gets as
      response 35 tokens: the new game state, and 32 columns that tell it what
      to render and where. The context has no history: the current state keeps

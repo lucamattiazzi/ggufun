@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Doom-like on ollama+GGUF</title>
+<title>Doom-like in a transformer</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
@@ -72,10 +72,10 @@
 </details>
 
 <dialog id="info">
-  <h2>This whole game is one GGUF</h2>
+  <h2>This whole game is one single transformer in a GGUF</h2>
   <p>A first-person maze with a monster that chases you (real BFS
      pathfinding, tabulated in the weights), hitscan shooting and hit
-     points — all inside a 294&nbsp;MB GGUF served by a stock ollama. The
+     points — all inside a 294&nbsp;MB transformer served by a stock ollama. The
      frontend sends only the pressed key.</p>
   <p>The state is re-serialized every tick: the prompt carries position,
      angle, enemy, HP and tick counter, and the model answers with the next

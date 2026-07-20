@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>base64 on ollama+GGUF</title>
+<title>base64 in a transformer</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
@@ -85,7 +85,7 @@
 
 <dialog id="info">
   <h2>A base64 encoder in the weights</h2>
-  <p>An 18&nbsp;MB GGUF that encodes base64, served by a stock ollama. The
+  <p>An 18&nbsp;MB transformer GGUF that encodes base64, served by a stock ollama. The
      page sends raw bytes as <code>&lt;B:xx&gt;</code> tokens and reads the
      characters back — it never encodes anything itself.</p>
   <p>Two transformer blocks: the first works out <i>where to read</i> — each

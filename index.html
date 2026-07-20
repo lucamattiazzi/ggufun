@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>after the bubble: hand written GGUF for fun</title>
+<title>after the bubble: hand written transformers packaged in GGUF for fun</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>
@@ -63,8 +63,8 @@
   </nav>
 </header>
 
-<p>Hand-written GGUFs as state machines: no training, every weight placed
-   by hand. A standard ollama server runs them like any other model.
+<p>Hand written transformers as state machines: no training, every weight placed
+   by hand. A standard ollama server runs them like any other model, since they are GGUF files.
    <button id="info-btn">what?</button></p>
 
 <ul class="machines">
@@ -88,19 +88,19 @@
 
 <dialog id="info">
   <h2>What is this?</h2>
-  <p>These are machines whose engine is a GGUF file, served by a standard
-     ollama server. The GGUFs have been hand crafted to behave
+  <p>These are machines whose engine is a transformer in a GGUF, served by a standard
+     ollama server. The transformers have been hand crafted to behave
      deterministically: the constraint was to build something that can
      interact with the frontend only through the ollama runtime.</p>
   <p>Attention heads read the current state from the conversation (ollama
      is stateless), MLPs implement the rules, and greedy decoding over
      saturated logits makes the whole system deterministic. It all started
-     from a minuscule GGUF that always returned the same sentence; the only
+     from a minuscule transformer that always returned the same sentence; the only
      possible future was, of course, Doom on ollama.</p>
   <p>All the frontend does is send inputs and draw what it receives: the
      state itself is always computed by the model from the whole
      conversation. Each page has an <i>info</i> button explaining what its
-     GGUF does.</p>
+    transformer does.</p>
   <button id="info-close">close</button>
 </dialog>
 
